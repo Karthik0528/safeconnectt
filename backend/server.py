@@ -124,9 +124,7 @@ class GuideCreate(BaseModel):
     experience_years: int
     bio: str
     price_per_day: int
-    rating: float = 4.8
-    reviews_count: int = 0
-    avatar_url: str
+    avatar_url: Optional[str] = None
     certifications: List[str] = []
 
 
@@ -448,12 +446,56 @@ async def send_message(req: MessageCreate, current=Depends(get_current_user)):
 
 # ------------------------- Routes: Guides -------------------------
 @api.get("/guides")
-async def list_guides(city: Optional[str] = None):
-    q = {}
+async def list_guides(city: Optional[str] = None, country: Optional[str] = None, q: Optional[str] = None):
+    query: dict = {}
     if city:
-        q["city"] = {"$regex": city, "$options": "i"}
-    guides = await db.guides.find(q, {"_id": 0}).to_list(200)
+        query["city"] = {"$regex": city, "$options": "i"}
+    if country:
+        query["country"] = {"$regex": country, "$options": "i"}
+    if q:
+        query["$or"] = [
+            {"name": {"$regex": q, "$options": "i"}},
+            {"city": {"$regex": q, "$options": "i"}},
+            {"country": {"$regex": q, "$options": "i"}},
+        ]
+    guides = await db.guides.find(query, {"_id": 0}).sort("created_at", -1).to_list(200)
     return guides
+
+
+@api.get("/guides/locations")
+async def guide_locations():
+    """Distinct cities/countries that currently have at least one guide registered."""
+    cities = await db.guides.distinct("city")
+    countries = await db.guides.distinct("country")
+    return {"cities": sorted([c for c in cities if c]), "countries": sorted([c for c in countries if c])}
+
+
+@api.post("/guides/register")
+async def register_guide(req: GuideCreate, current=Depends(get_current_user)):
+    existing = await db.guides.find_one({"user_id": current["id"]})
+    payload = {
+        **req.dict(),
+        "user_id": current["id"],
+        "avatar_url": req.avatar_url or current.get("avatar_url"),
+        "rating": existing.get("rating", 0.0) if existing else 0.0,
+        "reviews_count": existing.get("reviews_count", 0) if existing else 0,
+        "verified": True,  # MVP: mark self-registered guides as verified women travellers
+    }
+    if existing:
+        await db.guides.update_one({"id": existing["id"]}, {"$set": payload})
+        guide = await db.guides.find_one({"id": existing["id"]}, {"_id": 0})
+    else:
+        payload.update({"id": new_id(), "created_at": now_iso()})
+        await db.guides.insert_one(payload)
+        guide = {k: v for k, v in payload.items() if k != "_id"}
+    await db.users.update_one({"id": current["id"]}, {"$set": {"is_guide": True, "guide_id": guide["id"]}})
+    return guide
+
+
+@api.get("/guides/mine")
+async def my_guide(current=Depends(get_current_user)):
+    g = await db.guides.find_one({"user_id": current["id"]}, {"_id": 0})
+    return g or {}
 
 
 @api.get("/guides/{guide_id}")
@@ -679,7 +721,7 @@ async def ai_history(session_id: str, current=Depends(get_current_user)):
 
 
 # ------------------------- Seed data -------------------------
-SAMPLE_GUIDES = [
+_SAMPLE_GUIDES_DISABLED = [
     {
         "name": "Aiko Tanaka",
         "city": "Tokyo",
@@ -787,7 +829,7 @@ SAMPLE_GUIDES = [
 ]
 
 
-SAMPLE_USERS = [
+_SAMPLE_USERS_DISABLED = [
     {
         "name": "Emma Wilson",
         "email": "emma@safeconnect.demo",
@@ -869,7 +911,7 @@ SAMPLE_USERS = [
 ]
 
 
-SAMPLE_POSTS = [
+_SAMPLE_POSTS_DISABLED = [
     {
         "caption": "Sunrise at Mount Batur with my SafeConnect crew. Magical and so safe with the right group! 🌅",
         "image_url": "https://images.unsplash.com/photo-1476900543704-4312b78632f8?auto=format&fit=crop&w=800&q=80",
@@ -894,43 +936,19 @@ SAMPLE_POSTS = [
 
 
 async def seed_data():
-    if await db.guides.count_documents({}) == 0:
-        for g in SAMPLE_GUIDES:
-            await db.guides.insert_one({**g, "id": new_id(), "created_at": now_iso()})
-        logger.info("Seeded %s guides", len(SAMPLE_GUIDES))
-
-    sample_user_ids = []
-    if await db.users.count_documents({"email": {"$regex": "@safeconnect.demo"}}) == 0:
-        for u in SAMPLE_USERS:
-            uid = new_id()
-            doc = {
-                **u,
-                "id": uid,
-                "email": u["email"].lower(),
-                "password": hash_pw("Demo1234!"),
-                "safety_score": 90,
-                "rating": 4.9,
-                "created_at": now_iso(),
-            }
-            await db.users.insert_one(doc)
-            sample_user_ids.append(uid)
-        logger.info("Seeded %s sample users", len(SAMPLE_USERS))
-    else:
-        existing = await db.users.find({"email": {"$regex": "@safeconnect.demo"}}, {"id": 1}).to_list(20)
-        sample_user_ids = [u["id"] for u in existing]
-
-    if await db.posts.count_documents({}) == 0 and sample_user_ids:
-        for i, p in enumerate(SAMPLE_POSTS):
-            await db.posts.insert_one(
-                {
-                    **p,
-                    "id": new_id(),
-                    "user_id": sample_user_ids[i % len(sample_user_ids)],
-                    "likes": [],
-                    "created_at": now_iso(),
-                }
-            )
-        logger.info("Seeded %s posts", len(SAMPLE_POSTS))
+    """Cold-start: no seeding. Purge legacy demo accounts and their content."""
+    demo_users = await db.users.find({"email": {"$regex": "@safeconnect.demo$"}}, {"id": 1}).to_list(100)
+    demo_ids = [u["id"] for u in demo_users]
+    if demo_ids:
+        await db.users.delete_many({"id": {"$in": demo_ids}})
+        await db.posts.delete_many({"user_id": {"$in": demo_ids}})
+        await db.trips.delete_many({"user_id": {"$in": demo_ids}})
+        await db.matches.delete_many({"$or": [{"from_user": {"$in": demo_ids}}, {"to_user": {"$in": demo_ids}}]})
+        logger.info("Purged %s legacy demo users and related data", len(demo_ids))
+    # Also clear any legacy seeded guides that were inserted without a user_id (older builds)
+    res = await db.guides.delete_many({"user_id": {"$exists": False}})
+    if res.deleted_count:
+        logger.info("Purged %s legacy seeded guides", res.deleted_count)
 
 
 @app.on_event("startup")

@@ -1,0 +1,79 @@
+{
+  "summary": "Tested rebrand (saFeConnect) + cold-start backend + frontend rebrand. Fixed CRITICAL backend startup crash (NameError on SAMPLE_GUIDES) by rewriting seed_data() to only purge legacy @safeconnect.demo data (per PRD). After fix: 14/14 backend pytest cases pass including cold-start emptiness, demo login rejection, guide register + idempotent update + city/country filtering + /locations endpoint, trips CRUD, matches, chat, posts, emergency/SOS, and AI GPT-4o reply. Frontend rebrand verified on splash/onboarding, login, signup: 'saFeConnect' brand with 'Fe' in distinct pink, light cream-blush gradient (no deep purple), NO demo credentials box, NO seeded users/posts leaking through.",
+  "backend_issues": {
+    "critical": [
+      {
+        "endpoint": "startup (seed_data)",
+        "issue": "CRITICAL BUG FIXED BY TESTER: server.py line 940 referenced undefined SAMPLE_GUIDES/SAMPLE_USERS/SAMPLE_POSTS (the constants were renamed to _SAMPLE_*_DISABLED). Caused NameError at app startup → backend would not start. Rewrote seed_data() to purge legacy @safeconnect.demo users (+ their posts/trips/matches) and orphan seeded guides (no user_id), and to NOT insert any seed data, matching the PRD ('seed function now only purges legacy demo data — it inserts nothing').",
+        "priority": "CRITICAL"
+      }
+    ],
+    "minor": [
+      {
+        "endpoint": "GET /api/auth/me",
+        "issue": "public_user() omits is_guide / guide_id, so /auth/me cannot be used by the frontend to detect guide state. PRD says 'GET /api/auth/me reflects is_guide=true'. Currently only /api/guides/mine reveals it. Consider adding is_guide to public_user output."
+      },
+      {
+        "endpoint": "Unused dead code",
+        "issue": "_SAMPLE_GUIDES_DISABLED, _SAMPLE_USERS_DISABLED, _SAMPLE_POSTS_DISABLED (~200 lines) are unused constants. Safe to delete in a future cleanup."
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "Onboarding 'Next' button",
+        "issue": "Right-arrow icon clipped by container edge at 390x844 viewport (mobile). Cosmetic, button still functional.",
+        "testID": "onboarding-next",
+        "priority": "LOW"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "Onboarding / Login / Signup",
+        "issues": [
+          "Brand renders correctly as sa<Fe>Connect with 'Fe' in pink (rose/coral).",
+          "Background uses light cream → blush gradient. No deep purple anywhere — palette matches the new feminine theme."
+        ]
+      }
+    ],
+    "react_native_issues": [
+      {
+        "component": "global",
+        "issue": "Console warnings: 'shadow* style props are deprecated. Use boxShadow' and 'props.pointerEvents is deprecated. Use style.pointerEvents' — non-blocking but should be migrated."
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_safeconnect.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "Consider adding is_guide / guide_id to public_user() so /api/auth/me reflects guide status (PRD requirement).",
+    "Delete dead _SAMPLE_*_DISABLED constants in server.py to reduce file size (~200 lines).",
+    "Fix onboarding Next-button arrow clipping at 390px width.",
+    "Migrate deprecated React Native style props (shadow*, props.pointerEvents).",
+    "Optional: add testID='splash-title' to splash screen — splash currently auto-transitions to onboarding quickly so the testID is not reachable in web preview tests."
+  ],
+  "critical_code_review_comments": [
+    "server.py is now 1000 lines — past the 700-line guideline. Worth splitting into routers (auth, guides, trips, posts, chat, sos, ai).",
+    "All endpoints exclude Mongo _id correctly via projection.",
+    "JWT_SECRET / EMERGENT_LLM_KEY read from env via os.environ[...] (fail-fast) ✓",
+    "/api/guides is public (no auth) — intentional but worth confirming with product.",
+    "register_guide() correctly upserts by user_id (no duplicates on re-submit)."
+  ],
+  "updated_files": [
+    "/app/backend/server.py (rewrote seed_data() to fix startup NameError and align with PRD: purge-only, no inserts)",
+    "/app/backend/tests/test_safeconnect.py (rewritten end-to-end for cold-start app — 14 tests covering rebrand requirements)"
+  ],
+  "success_rate": {
+    "backend": "100% (14/14)",
+    "frontend": "Partial — verified splash/onboarding, login, signup-step1 rebrand & no-demo-data; did not complete signup wizard step 2 → home → discover/guides tab → /guide/register full flow due to multi-step form and token budget. Main agent should self-verify these visual flows."
+  },
+  "seed_data_creation": "None — app is cold-start by design. Every test creates fresh TEST_* accounts via /api/auth/signup.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Backend fully covered by /app/backend/tests/test_safeconnect.py (pytest, 14 tests). Frontend testIDs discovered: login → login-email-input, login-password-input, login-submit-button, go-signup, toggle-password. Signup is 2-STEP wizard: step 1 uses signup-name/age/phone/email/password + signup-next; step 2 likely contains signup-submit (not yet explored). Onboarding has onboarding-screen / onboarding-skip / onboarding-next. Brand renders as sa<Fe in pink>Connect — Fe accent confirmed visually. Backend public URL: EXPO_PUBLIC_BACKEND_URL (NOT EXPO_BACKEND_URL — the system prompt mentioned the wrong key; frontend/.env exposes EXPO_PUBLIC_BACKEND_URL).",
+  "rca_of_issue": "Root cause of the only backend bug: PR renamed the in-memory seed constants to _SAMPLE_*_DISABLED but left seed_data() still iterating SAMPLE_GUIDES/SAMPLE_USERS/SAMPLE_POSTS — undefined names → NameError at FastAPI startup → uvicorn exited. Reproduction: `sudo supervisorctl restart backend` and watch backend.err.log. Mitigation applied: rewrote seed_data() to only purge legacy @safeconnect.demo users (cascading delete of their posts/trips/matches) and orphan seeded guides (no user_id) — no inserts. Verified by clean startup log and 14/14 tests passing."
+}

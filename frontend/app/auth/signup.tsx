@@ -88,7 +88,7 @@ export default function Signup() {
             <TouchableOpacity onPress={() => router.back()} style={styles.back}>
               <Feather name="arrow-left" size={20} color="#1F1A24" />
             </TouchableOpacity>
-            <Text style={styles.brand}>Join SafeConnect</Text>
+            <Text style={styles.brand}>Join sa<Text style={{ color: "#EC4899" }}>Fe</Text>Connect</Text>
             <Text style={styles.tag}>Verified women only · Step {step} of 2</Text>
           </LinearGradient>
 

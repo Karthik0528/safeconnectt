@@ -57,7 +57,7 @@ export default function Onboarding() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }} testID="onboarding-screen">
       <View style={styles.topBar}>
-        <Text style={styles.brand}>SafeConnect</Text>
+        <Text style={styles.brand}>sa<Text style={{ color: "#EC4899" }}>Fe</Text>Connect</Text>
         <TouchableOpacity onPress={() => router.replace("/auth/login")} testID="onboarding-skip">
           <Text style={styles.skip}>Skip</Text>
         </TouchableOpacity>

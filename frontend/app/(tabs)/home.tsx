@@ -102,7 +102,7 @@ export default function Home() {
           <QuickAction icon="plus-circle" label="New trip" onPress={() => router.push("/trip/create")} testID="qa-new-trip" />
           <QuickAction icon="cpu" label="AI tips" onPress={() => router.push("/ai-assistant")} testID="qa-ai" />
           <QuickAction icon="users" label="Find women" onPress={() => router.push("/(tabs)/discover")} testID="qa-find" />
-          <QuickAction icon="map-pin" label="Guides" onPress={() => router.push("/(tabs)/discover?tab=guides")} testID="qa-guides" />
+          <QuickAction icon="map-pin" label="Guides" onPress={() => router.push({ pathname: "/(tabs)/discover", params: { tab: "guides" } })} testID="qa-guides" />
         </View>
 
         {/* Upcoming trip */}

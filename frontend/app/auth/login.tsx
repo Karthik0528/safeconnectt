@@ -34,7 +34,7 @@ export default function Login() {
     setBusy(true);
     setErr(null);
     try {
-      await login(email.trim(), password);
+      await login(email.trim().toLowerCase(), password);
       router.replace("/(tabs)/home");
     } catch (e: any) {
       setErr(e.message || "Login failed");
@@ -50,12 +50,12 @@ export default function Login() {
         style={{ flex: 1 }}
       >
         <ScrollView contentContainerStyle={{ flexGrow: 1 }} keyboardShouldPersistTaps="handled">
-          <LinearGradient colors={["#FCE7F3", "#EDE9FE"]} style={styles.hero}>
+          <LinearGradient colors={["#FFE4E6", "#FCE7F3"]} style={styles.hero}>
             <View style={styles.logoBadge}>
-              <Feather name="shield" size={28} color="#fff" />
+              <Feather name="heart" size={28} color="#fff" />
             </View>
-            <Text style={styles.brand}>SafeConnect</Text>
-            <Text style={styles.tag}>Welcome back, traveller ✨</Text>
+            <Text style={styles.brand}>sa<Text style={{ color: "#EC4899" }}>Fe</Text>Connect</Text>
+            <Text style={styles.tag}>Welcome back ✨</Text>
           </LinearGradient>
 
           <View style={styles.form}>
@@ -101,22 +101,8 @@ export default function Login() {
               style={{ marginTop: 16 }}
             />
 
-            <View style={styles.demoBox}>
-              <Text style={styles.demoTitle}>Demo account</Text>
-              <Text style={styles.demoText}>emma@safeconnect.demo · Demo1234!</Text>
-              <TouchableOpacity
-                onPress={() => {
-                  setEmail("emma@safeconnect.demo");
-                  setPassword("Demo1234!");
-                }}
-                testID="login-fill-demo"
-              >
-                <Text style={styles.demoFill}>Fill demo credentials</Text>
-              </TouchableOpacity>
-            </View>
-
             <View style={styles.signupRow}>
-              <Text style={{ color: "#6B7280" }}>New to SafeConnect? </Text>
+              <Text style={{ color: "#6B7280" }}>New to saFeConnect? </Text>
               <Link href="/auth/signup" testID="go-signup">
                 <Text style={styles.signupLink}>Create account</Text>
               </Link>
