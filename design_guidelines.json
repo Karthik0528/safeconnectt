@@ -1,0 +1,167 @@
+{
+  "project_info": {
+    "name": "SafeConnect",
+    "description": "Women-only solo travel safety and networking platform",
+    "platform": "Expo React Native",
+    "theme": "Light & Dark Mode",
+    "archetype": "3 (Pastel & Soft) & 5 (Jewel & Luxury)"
+  },
+  "design_principles": [
+    "Premium feminine but modern UI with soft glassmorphism",
+    "Smooth gradients (purple gradients, pink accents)",
+    "White clean backgrounds with deep dark mode support",
+    "Floating bottom navbar and rounded corners",
+    "Modern typography and real-time animations"
+  ],
+  "colors": {
+    "light": {
+      "background": "#FAFAFA",
+      "surface": "#FFFFFF",
+      "primary": "#8B5CF6",
+      "secondary": "#EC4899",
+      "text_primary": "#1F1A24",
+      "text_secondary": "#6B7280",
+      "border": "rgba(0, 0, 0, 0.05)",
+      "glass_bg": "rgba(255, 255, 255, 0.7)",
+      "glass_border": "rgba(255, 255, 255, 0.5)",
+      "success": "#10B981",
+      "error": "#EF4444",
+      "gradient_primary": ["#8B5CF6", "#D946EF"],
+      "gradient_sos": ["#EF4444", "#F43F5E"]
+    },
+    "dark": {
+      "background": "#0F0B15",
+      "surface": "#1A1523",
+      "primary": "#A855F7",
+      "secondary": "#F472B6",
+      "text_primary": "#F3E8FF",
+      "text_secondary": "#A1A1AA",
+      "border": "rgba(255, 255, 255, 0.1)",
+      "glass_bg": "rgba(26, 21, 35, 0.6)",
+      "glass_border": "rgba(255, 255, 255, 0.1)",
+      "success": "#34D399",
+      "error": "#F87171",
+      "gradient_primary": ["#9333EA", "#DB2777"],
+      "gradient_sos": ["#DC2626", "#E11D48"]
+    }
+  },
+  "typography": {
+    "font_family": "System",
+    "h1": { "fontSize": 32, "fontWeight": "800", "letterSpacing": -1 },
+    "h2": { "fontSize": 24, "fontWeight": "700", "letterSpacing": -0.5 },
+    "h3": { "fontSize": 20, "fontWeight": "600", "letterSpacing": -0.5 },
+    "body": { "fontSize": 16, "fontWeight": "400", "lineHeight": 24 },
+    "label": { "fontSize": 12, "fontWeight": "600", "letterSpacing": 1, "textTransform": "uppercase" }
+  },
+  "spacing": {
+    "xs": 4,
+    "sm": 8,
+    "md": 16,
+    "lg": 24,
+    "xl": 32,
+    "2xl": 48
+  },
+  "radii": {
+    "sm": 8,
+    "md": 16,
+    "lg": 24,
+    "xl": 32,
+    "full": 9999
+  },
+  "shadows": {
+    "light": {
+      "sm": { "shadowColor": "#000", "shadowOffset": { "width": 0, "height": 2 }, "shadowOpacity": 0.05, "shadowRadius": 4, "elevation": 2 },
+      "md": { "shadowColor": "#8B5CF6", "shadowOffset": { "width": 0, "height": 8 }, "shadowOpacity": 0.15, "shadowRadius": 16, "elevation": 8 }
+    },
+    "dark": {
+      "sm": { "shadowColor": "#000", "shadowOffset": { "width": 0, "height": 2 }, "shadowOpacity": 0.3, "shadowRadius": 4, "elevation": 2 },
+      "md": { "shadowColor": "#8B5CF6", "shadowOffset": { "width": 0, "height": 8 }, "shadowOpacity": 0.25, "shadowRadius": 16, "elevation": 8 }
+    }
+  },
+  "components": {
+    "button": {
+      "primary": "Use expo-linear-gradient with gradient_primary. borderRadius: radii.full. Add shadow.md.",
+      "glass": "Use expo-blur BlurView. backgroundColor: glass_bg. borderColor: glass_border. borderWidth: 1. borderRadius: radii.full."
+    },
+    "navbar": {
+      "floating_bottom": "position: 'absolute', bottom: 24, left: 24, right: 24. Use BlurView with glass_bg. borderRadius: radii.full. flexDirection: 'row', justifyContent: 'space-between', padding: 16. shadow.md."
+    },
+    "card": {
+      "default": "backgroundColor: surface. borderRadius: radii.lg. padding: spacing.lg. shadow.sm.",
+      "glass": "Use BlurView. borderRadius: radii.lg. padding: spacing.lg. borderWidth: 1, borderColor: glass_border."
+    },
+    "input": {
+      "default": "backgroundColor: surface, borderRadius: radii.md, padding: spacing.md, borderWidth: 1, borderColor: border. Font body."
+    }
+  },
+  "icons": {
+    "library": "@expo/vector-icons",
+    "family": "Feather"
+  },
+  "animations": {
+    "transition": "Use React Native Animated or Reanimated for smooth transitions.",
+    "press": "Use TouchableOpacity with activeOpacity={0.7} or Pressable with scale animation."
+  },
+  "accessibility_and_testing": {
+    "testing_attributes": "All interactive and key informational elements MUST include a `testID` attribute (React Native equivalent of data-testid). Use kebab-case, role-based naming (e.g., testID='login-form-submit-button')."
+  },
+  "image_urls": {
+    "avatars": [
+      {
+        "url": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80",
+        "description": "Profile picture of young woman, smiling",
+        "category": "user_avatar"
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=400&q=80",
+        "description": "Profile picture of adventurous woman",
+        "category": "user_avatar"
+      },
+      {
+        "url": "https://images.pexels.com/photos/31693234/pexels-photo-31693234.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "description": "Two women travelers",
+        "category": "user_avatar"
+      }
+    ],
+    "destinations": [
+      {
+        "url": "https://images.unsplash.com/photo-1499856871958-5b9627545d1a?auto=format&fit=crop&w=800&q=80",
+        "description": "Paris view",
+        "category": "destination"
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1537996194471-e657df975ab4?auto=format&fit=crop&w=800&q=80",
+        "description": "Bali landscape",
+        "category": "destination"
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?auto=format&fit=crop&w=800&q=80",
+        "description": "London street",
+        "category": "destination"
+      }
+    ],
+    "feed": [
+      {
+        "url": "https://images.pexels.com/photos/4901963/pexels-photo-4901963.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "description": "Women at train station",
+        "category": "community_feed"
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1476900543704-4312b78632f8?auto=format&fit=crop&w=800&q=80",
+        "description": "Woman looking at mountains",
+        "category": "community_feed"
+      }
+    ]
+  },
+  "instructions_to_main_agent": [
+    "Use ONLY Expo and React Native standard components (View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Image).",
+    "Use expo-blur for glassmorphism effects (e.g., floating bottom navbar, glass cards).",
+    "Use expo-linear-gradient for the primary purple-to-pink gradients as requested.",
+    "Implement the floating bottom navbar using position 'absolute' and BlurView to give it a premium feel over the content.",
+    "Ensure dark mode support by using React Native's useColorScheme() hook or a context provider, flipping colors defined in this guideline.",
+    "Use @expo/vector-icons (Feather) for clean, modern iconography.",
+    "Apply `testID` to all interactive components as per the testing rules.",
+    "No Tailwind CSS or className; strict StyleSheet usage only.",
+    "Use the provided Unsplash/Pexels URLs for image placeholders."
+  ]
+}
