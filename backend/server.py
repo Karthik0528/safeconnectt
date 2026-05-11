@@ -212,6 +212,8 @@ def public_user(u: dict) -> dict:
         "countries_visited": u.get("countries_visited", 0),
         "trips_count": u.get("trips_count", 0),
         "rating": u.get("rating", 5.0),
+        "is_guide": bool(u.get("is_guide", False)),
+        "guide_id": u.get("guide_id"),
         "created_at": u.get("created_at", now_iso()),
     }
 

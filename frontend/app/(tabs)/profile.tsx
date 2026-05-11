@@ -72,7 +72,7 @@ export default function Profile() {
 
         <Section title="Account">
           <Row icon="user" label="Edit profile" onPress={() => router.push("/edit-profile")} testID="row-edit-profile" />
-          <Row icon="map-pin" label="Become a Local Guide" onPress={() => router.push("/guide/register")} testID="row-become-guide" />
+          <Row icon="map-pin" label={user.is_guide ? "My guide profile" : "Become a Local Guide"} onPress={() => router.push("/guide/register")} testID="row-become-guide" />
           <Row icon="calendar" label="My bookings" onPress={() => router.push("/bookings")} testID="row-bookings" />
           <Row icon="map" label="My trips" onPress={() => router.push("/trips")} testID="row-trips" />
         </Section>

@@ -16,6 +16,8 @@ export type User = {
   countries_visited: number;
   trips_count: number;
   rating: number;
+  is_guide?: boolean;
+  guide_id?: string | null;
   created_at: string;
 };
 
