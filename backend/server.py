@@ -981,3 +981,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.get("/")
+def home():
+    return {"message": "saFeConnect Backend Running 🚀"}
