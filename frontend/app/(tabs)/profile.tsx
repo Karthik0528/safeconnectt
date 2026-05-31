@@ -22,30 +22,51 @@ export default function Profile() {
   };
 
   const handleLogout = () =>
-    Alert.alert("Sign out?", "You'll need your password to sign back in.", [
+  Alert.alert(
+    "Sign out?",
+    "You'll need your password to sign back in.",
+    [
       { text: "Cancel", style: "cancel" },
       {
         text: "Sign out",
         style: "destructive",
         onPress: async () => {
-          await logout();
-          router.replace("/auth/login");
+          try {
+
+            console.log("BUTTON PRESSED");
+
+            await logout();
+
+            console.log("LOGOUT SUCCESS");
+
+            router.replace("/auth/login");
+
+          } catch (error) {
+
+            console.log("LOGOUT ERROR:", error);
+
+            Alert.alert(
+              "Logout Failed",
+              JSON.stringify(error)
+            );
+          }
         },
       },
-    ]);
+    ]
+  );
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={["top"]}>
       <ScrollView contentContainerStyle={{ paddingBottom: 140 }}>
         <LinearGradient colors={colors.gradientPrimary} style={styles.hero}>
-          <View style={{ alignItems: "center", paddingHorizontal: 20, paddingVertical: 24 }}>
+          <View style={{ alignItems: "center", paddingHorizontal: 20, paddingTop: 28, paddingBottom: 54 }}>
             <Image source={{ uri: user.avatar_url || undefined }} style={styles.avatar} />
             <View style={{ flexDirection: "row", gap: 6, alignItems: "center", marginTop: 12 }}>
               <Text style={styles.name} testID="profile-name">{user.name}</Text>
               {user.verified && <VerifiedBadge />}
             </View>
-            <Text style={{ color: "rgba(255,255,255,0.85)", marginTop: 4 }}>{user.email}</Text>
-            <View style={{ flexDirection: "row", marginTop: 14, gap: 24 }}>
+            <Text style={{ color: "rgba(255,255,255,0.85)", marginTop: 6, fontSize: 17 }}>{user.email}</Text>
+            <View style={{ flexDirection: "row", marginTop: 22, gap: 42 }}>
               <Stat n={user.trips_count} l="Trips" />
               <Stat n={user.countries_visited} l="Countries" />
               <Stat n={user.rating} l="Rating" decimal />
@@ -55,13 +76,13 @@ export default function Profile() {
 
         <View style={[styles.scoreCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <View style={{ flex: 1 }}>
-            <Text style={{ color: colors.textMuted, fontSize: 12, fontWeight: "700", textTransform: "uppercase", letterSpacing: 1 }}>
+              <Text style={{ color: colors.textMuted, fontSize: 14, fontWeight: "900", textTransform: "uppercase", letterSpacing: 2 }}>
               Safety score
             </Text>
             <Text style={{ color: colors.text, fontSize: 28, fontWeight: "800", marginTop: 2 }}>
               {user.safety_score}/100
             </Text>
-            <Text style={{ color: colors.textMuted, fontSize: 13, marginTop: 2 }}>
+            <Text style={{ color: colors.textMuted, fontSize: 16, marginTop: 4, lineHeight: 22 }}>
               Boost it by adding emergency contacts & finishing verification.
             </Text>
           </View>
@@ -112,8 +133,8 @@ export default function Profile() {
 function Stat({ n, l, decimal }: { n: number; l: string; decimal?: boolean }) {
   return (
     <View style={{ alignItems: "center" }}>
-      <Text style={{ color: "#fff", fontSize: 22, fontWeight: "800" }}>{decimal ? n.toFixed(1) : n}</Text>
-      <Text style={{ color: "rgba(255,255,255,0.75)", fontSize: 11, marginTop: 2 }}>{l}</Text>
+      <Text style={{ color: "#fff", fontSize: 28, fontWeight: "900" }}>{decimal ? n.toFixed(1) : n}</Text>
+      <Text style={{ color: "rgba(255,255,255,0.75)", fontSize: 14, marginTop: 2 }}>{l}</Text>
     </View>
   );
 }
@@ -122,7 +143,7 @@ function Section({ title, children }: any) {
   const { colors } = useTheme();
   return (
     <View style={{ paddingHorizontal: 20, marginTop: 24 }}>
-      <Text style={{ color: colors.textMuted, fontSize: 12, fontWeight: "700", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>
+      <Text style={{ color: colors.textMuted, fontSize: 14, fontWeight: "900", textTransform: "uppercase", letterSpacing: 2.5, marginBottom: 12 }}>
         {title}
       </Text>
       {children}
@@ -141,18 +162,18 @@ function Row({ icon, label, onPress, danger, testID }: any) {
       <View style={[styles.rowIcon, { backgroundColor: danger ? "#FEE2E2" : colors.chipBg }]}>
         <Feather name={icon} size={18} color={danger ? "#DC2626" : colors.primary} />
       </View>
-      <Text style={{ color: danger ? "#DC2626" : colors.text, fontWeight: "600", flex: 1 }}>{label}</Text>
+      <Text style={{ color: danger ? "#EF535A" : colors.text, fontWeight: "800", flex: 1, fontSize: 17 }}>{label}</Text>
       <Feather name="chevron-right" size={18} color={colors.textMuted} />
     </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
-  hero: { borderBottomLeftRadius: 28, borderBottomRightRadius: 28 },
-  avatar: { width: 96, height: 96, borderRadius: 999, borderWidth: 3, borderColor: "#fff" },
-  name: { color: "#fff", fontSize: 24, fontWeight: "800" },
-  scoreCard: { marginHorizontal: 20, marginTop: -20, padding: 18, borderRadius: 22, borderWidth: 1, flexDirection: "row", alignItems: "center", gap: 12 },
-  scoreRing: { width: 60, height: 60, borderRadius: 999, borderWidth: 3, alignItems: "center", justifyContent: "center" },
-  row: { flexDirection: "row", alignItems: "center", gap: 12, padding: 14, borderRadius: 16, borderWidth: 1, marginBottom: 8 },
-  rowIcon: { width: 40, height: 40, borderRadius: 12, alignItems: "center", justifyContent: "center" },
+  hero: { borderBottomLeftRadius: 34, borderBottomRightRadius: 34 },
+  avatar: { width: 118, height: 118, borderRadius: 999, borderWidth: 4, borderColor: "#fff" },
+  name: { color: "#fff", fontSize: 34, fontWeight: "900" },
+  scoreCard: { marginHorizontal: 20, marginTop: -36, padding: 20, borderRadius: 24, borderWidth: 1, flexDirection: "row", alignItems: "center", gap: 14 },
+  scoreRing: { width: 78, height: 78, borderRadius: 999, borderWidth: 4, alignItems: "center", justifyContent: "center" },
+  row: { flexDirection: "row", alignItems: "center", gap: 14, padding: 18, borderRadius: 20, borderWidth: 1, marginBottom: 12 },
+  rowIcon: { width: 54, height: 54, borderRadius: 16, alignItems: "center", justifyContent: "center" },
 });

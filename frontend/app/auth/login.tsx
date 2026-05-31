@@ -52,7 +52,7 @@ export default function Login() {
         <ScrollView contentContainerStyle={{ flexGrow: 1 }} keyboardShouldPersistTaps="handled">
           <LinearGradient colors={["#FFE4E6", "#FCE7F3"]} style={styles.hero}>
             <View style={styles.logoBadge}>
-              <Feather name="heart" size={28} color="#fff" />
+              <Feather name="map-pin" size={28} color="#fff" />
             </View>
             <Text style={styles.brand}>sa<Text style={{ color: "#EC4899" }}>Fe</Text>Connect</Text>
             <Text style={styles.tag}>Welcome back ✨</Text>

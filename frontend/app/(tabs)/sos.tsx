@@ -10,6 +10,7 @@ import {
   Alert,
   Modal,
   TextInput,
+  Linking,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
@@ -49,33 +50,96 @@ export default function SOS() {
   }, []);
 
   const trigger = async () => {
-    if (contacts.length === 0) {
-      Alert.alert("Add a contact first", "Add at least one emergency contact before using SOS.");
+
+  if (contacts.length === 0) {
+    Alert.alert(
+      "Add a contact first",
+      "Add at least one emergency contact."
+    );
+    return;
+  }
+
+  setBusy(true);
+
+  try {
+
+    const perm =
+      await Location.requestForegroundPermissionsAsync();
+
+    if (perm.status !== "granted") {
+      Alert.alert(
+        "Permission Denied",
+        "Location access is required."
+      );
       return;
     }
-    setBusy(true);
-    let lat = 0, lng = 0;
-    try {
-      const perm = await Location.requestForegroundPermissionsAsync();
-      if (perm.status === "granted") {
-        const loc = await Location.getCurrentPositionAsync({});
-        lat = loc.coords.latitude;
-        lng = loc.coords.longitude;
-      }
-    } catch {}
-    try {
-      const r = await api<{ alert: any; notified_count: number; message: string }>("/sos/trigger", {
+
+    const loc =
+      await Location.getCurrentPositionAsync({
+  accuracy: Location.Accuracy.Highest,
+});
+
+    const lat = loc.coords.latitude;
+    const lng = loc.coords.longitude;
+    console.log("Latitude:", lat);
+console.log("Longitude:", lng);
+
+Alert.alert(
+  "Debug Location",
+  `Lat: ${lat}\nLng: ${lng}`
+);
+
+    const googleMapLink =
+      `https://maps.google.com/?q=${lat},${lng}`;
+      const phone = contacts[0]?.phone;
+
+const message = `
+🚨 EMERGENCY ALERT
+
+I need help!
+
+My Live Location:
+${googleMapLink}
+`;
+
+const whatsappURL =
+  `whatsapp://send?phone=${phone}&text=${encodeURIComponent(message)}`;
+
+await Linking.openURL(whatsappURL);
+
+    Alert.alert(
+      "SOS Activated 🚨",
+      `Live Location:\n${googleMapLink}`
+    );
+
+    const r = await api(
+      "/sos/trigger",
+      {
         method: "POST",
-        body: { latitude: lat, longitude: lng, message: "I need help! This is an emergency." },
-      });
-      Alert.alert("SOS sent", r.message);
-      await load();
-    } catch (e: any) {
-      Alert.alert("Error", e.message);
-    } finally {
-      setBusy(false);
-    }
-  };
+        body: {
+          latitude: lat,
+          longitude: lng,
+          message:
+            `I need help! My location: ${googleMapLink}`
+        },
+      }
+    );
+
+    await load();
+
+  } catch (e:any) {
+
+    Alert.alert(
+      "Error",
+      e.message || "Could not get location"
+    );
+
+  } finally {
+
+    setBusy(false);
+
+  }
+};
 
   const resolve = async () => {
     if (!active) return;
@@ -110,9 +174,9 @@ export default function SOS() {
   return (
     <SafeAreaView style={[{ flex: 1, backgroundColor: colors.background }]} edges={["top"]}>
       <ScrollView contentContainerStyle={{ paddingBottom: 140 }}>
-        <View style={{ padding: 20 }}>
+        <View style={{ padding: 20, paddingTop: 14 }}>
           <Text style={[styles.title, { color: colors.text }]}>SOS</Text>
-          <Text style={{ color: colors.textMuted, marginTop: 2 }}>
+          <Text style={{ color: colors.textMuted, marginTop: 6, fontSize: 16, lineHeight: 22 }}>
             Tap & hold to alert your trusted contacts in seconds.
           </Text>
         </View>
@@ -131,8 +195,8 @@ export default function SOS() {
             activeOpacity={0.85}
             testID="sos-trigger-button"
           >
-            <LinearGradient colors={["#EF4444", "#F43F5E"]} style={styles.sosBtn}>
-              <Feather name="alert-octagon" size={56} color="#fff" />
+            <LinearGradient colors={colors.gradientSos} style={styles.sosBtn}>
+              <Feather name="alert-octagon" size={60} color="#fff" />
               <Text style={styles.sosLabel}>{busy ? "SENDING…" : "SOS"}</Text>
             </LinearGradient>
           </TouchableOpacity>
@@ -148,7 +212,7 @@ export default function SOS() {
               {active.contacts_notified.length} contact(s) notified · location shared at {new Date(active.created_at).toLocaleTimeString()}
             </Text>
             <TouchableOpacity onPress={resolve} testID="sos-resolve" style={styles.resolveBtn}>
-              <Text style={{ color: "#fff", fontWeight: "700" }}>I'm safe — resolve alert</Text>
+              <Text style={{ color: "#fff", fontWeight: "700" }}>I am safe - resolve alert</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -168,7 +232,7 @@ export default function SOS() {
 
           {contacts.length === 0 ? (
             <Text style={{ color: colors.textMuted, marginTop: 8 }}>
-              Add at least one trusted contact. They'll receive your live location instantly if you trigger SOS.
+              Add at least one trusted contact. They will receive your live location instantly if you trigger SOS.
             </Text>
           ) : (
             contacts.map((c) => (
@@ -270,21 +334,21 @@ function ActionBtn({ icon, label, onPress, testID, colors }: any) {
 }
 
 const styles = StyleSheet.create({
-  title: { fontSize: 30, fontWeight: "800", letterSpacing: -0.7 },
-  sosWrap: { alignItems: "center", justifyContent: "center", marginVertical: 30, height: 280 },
-  pulse: { position: "absolute", width: 200, height: 200, borderRadius: 100, backgroundColor: "rgba(239,68,68,0.35)" },
-  sosBtn: { width: 200, height: 200, borderRadius: 100, alignItems: "center", justifyContent: "center", shadowColor: "#EF4444", shadowOpacity: 0.45, shadowRadius: 24, shadowOffset: { width: 0, height: 10 }, elevation: 16 },
-  sosLabel: { color: "#fff", fontSize: 26, fontWeight: "900", letterSpacing: 4, marginTop: 8 },
+  title: { fontSize: 38, fontWeight: "900" },
+  sosWrap: { alignItems: "center", justifyContent: "center", marginVertical: 34, height: 380 },
+  pulse: { position: "absolute", width: 230, height: 230, borderRadius: 115, backgroundColor: "rgba(239,68,68,0.26)" },
+  sosBtn: { width: 220, height: 220, borderRadius: 110, alignItems: "center", justifyContent: "center", shadowColor: "#EF4444", shadowOpacity: 0.45, shadowRadius: 24, shadowOffset: { width: 0, height: 10 }, elevation: 16 },
+  sosLabel: { color: "#fff", fontSize: 32, fontWeight: "900", letterSpacing: 6, marginTop: 12 },
   alertCard: { marginHorizontal: 20, padding: 16, borderRadius: 16, borderWidth: 1 },
   resolveBtn: { marginTop: 12, backgroundColor: "#DC2626", paddingVertical: 12, borderRadius: 999, alignItems: "center" },
   actionsRow: { flexDirection: "row", paddingHorizontal: 20, gap: 12, marginTop: 16 },
-  actBtn: { flex: 1, padding: 16, borderRadius: 18, borderWidth: 1, alignItems: "center" },
-  actIcon: { width: 40, height: 40, borderRadius: 12, alignItems: "center", justifyContent: "center" },
+  actBtn: { flex: 1, padding: 22, borderRadius: 22, borderWidth: 1, alignItems: "center" },
+  actIcon: { width: 50, height: 50, borderRadius: 16, alignItems: "center", justifyContent: "center" },
   headerRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 },
-  sectionTitle: { fontSize: 18, fontWeight: "700" },
-  contact: { flexDirection: "row", alignItems: "center", gap: 12, padding: 14, borderRadius: 16, borderWidth: 1, marginTop: 8 },
-  contactIcon: { width: 40, height: 40, borderRadius: 12, alignItems: "center", justifyContent: "center" },
-  alertRow: { flexDirection: "row", alignItems: "center", gap: 10, padding: 14, borderRadius: 16, borderWidth: 1, marginTop: 8 },
+  sectionTitle: { fontSize: 22, fontWeight: "900" },
+  contact: { flexDirection: "row", alignItems: "center", gap: 12, padding: 16, borderRadius: 18, borderWidth: 1, marginTop: 10 },
+  contactIcon: { width: 48, height: 48, borderRadius: 14, alignItems: "center", justifyContent: "center" },
+  alertRow: { flexDirection: "row", alignItems: "center", gap: 10, padding: 16, borderRadius: 18, borderWidth: 1, marginTop: 10 },
   modalBg: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.4)" },
   modalCard: { padding: 20, borderTopLeftRadius: 28, borderTopRightRadius: 28 },
   input: { borderWidth: 1, borderRadius: 12, padding: 12, marginVertical: 6, fontSize: 16 },

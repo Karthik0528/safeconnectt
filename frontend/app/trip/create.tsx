@@ -78,9 +78,9 @@ export default function CreateTrip() {
             <TouchableOpacity onPress={() => router.back()} style={styles.back}>
               <Feather name="arrow-left" size={20} color={colors.text} />
             </TouchableOpacity>
-            <Text style={[styles.title, { color: colors.text }]}>Plan a new trip ✈️</Text>
-            <Text style={{ color: colors.textMuted, marginTop: 4 }}>
-              We'll match you with verified women going to the same place.
+            <Text style={[styles.title, { color: colors.text }]}>Plan a new trip</Text>
+            <Text style={{ color: colors.textMuted, marginTop: 8, fontSize: 17, lineHeight: 24 }}>
+              We will match you with verified women going to the same place.
             </Text>
           </LinearGradient>
 
@@ -208,10 +208,10 @@ function Field({ label, children, colors }: any) {
 }
 
 const styles = StyleSheet.create({
-  hero: { padding: 20, paddingTop: 24, paddingBottom: 28, borderBottomLeftRadius: 28, borderBottomRightRadius: 28 },
-  back: { width: 36, height: 36, borderRadius: 12, backgroundColor: "rgba(255,255,255,0.8)", alignItems: "center", justifyContent: "center", marginBottom: 12 },
-  title: { fontSize: 26, fontWeight: "800", letterSpacing: -0.5 },
-  label: { fontSize: 12, fontWeight: "700", textTransform: "uppercase", letterSpacing: 1, marginBottom: 6 },
-  input: { borderWidth: 1, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 12, fontSize: 16 },
-  textarea: { minHeight: 90, textAlignVertical: "top" },
+  hero: { padding: 20, paddingTop: 30, paddingBottom: 42, borderBottomLeftRadius: 34, borderBottomRightRadius: 34 },
+  back: { width: 48, height: 48, borderRadius: 16, backgroundColor: "rgba(255,255,255,0.88)", alignItems: "center", justifyContent: "center", marginBottom: 28 },
+  title: { fontSize: 34, fontWeight: "900" },
+  label: { fontSize: 14, fontWeight: "900", textTransform: "uppercase", letterSpacing: 2.5, marginBottom: 8 },
+  input: { borderWidth: 1, borderRadius: 18, paddingHorizontal: 16, paddingVertical: 16, fontSize: 18 },
+  textarea: { minHeight: 110, textAlignVertical: "top" },
 });

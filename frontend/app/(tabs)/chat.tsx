@@ -26,9 +26,9 @@ export default function ChatList() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={["top"]}>
-      <View style={{ paddingHorizontal: 20, paddingTop: 8 }}>
+      <View style={{ paddingHorizontal: 20, paddingTop: 14 }}>
         <Text style={[styles.title, { color: colors.text }]}>Messages</Text>
-        <Text style={{ color: colors.textMuted, marginTop: 2 }}>
+        <Text style={{ color: colors.textMuted, marginTop: 6, fontSize: 16, lineHeight: 22 }}>
           Chat with women going your way.
         </Text>
       </View>
@@ -49,12 +49,12 @@ export default function ChatList() {
           />
         }
         ListEmptyComponent={
-          <View style={{ alignItems: "center", marginTop: 48 }}>
+          <View style={{ alignItems: "center", marginTop: 120 }}>
             <View style={[styles.emptyIcon, { backgroundColor: colors.chipBg }]}>
-              <Feather name="message-circle" size={28} color={colors.primary} />
+              <Feather name="message-circle" size={34} color={colors.primary} />
             </View>
-            <Text style={{ color: colors.text, fontWeight: "700", fontSize: 16, marginTop: 12 }}>No chats yet</Text>
-            <Text style={{ color: colors.textMuted, marginTop: 4, textAlign: "center", maxWidth: 260 }}>
+            <Text style={{ color: colors.text, fontWeight: "900", fontSize: 22, marginTop: 18 }}>No chats yet</Text>
+            <Text style={{ color: colors.textMuted, marginTop: 8, textAlign: "center", maxWidth: 280, fontSize: 17, lineHeight: 23 }}>
               Head to Discover and message a verified traveller to start your first conversation.
             </Text>
             <TouchableOpacity
@@ -62,7 +62,7 @@ export default function ChatList() {
               style={[styles.discoverBtn, { backgroundColor: colors.primary }]}
               testID="chat-go-discover"
             >
-              <Text style={{ color: "#fff", fontWeight: "700" }}>Go to Discover</Text>
+              <Text style={{ color: "#fff", fontWeight: "900", fontSize: 16 }}>Go to Discover</Text>
             </TouchableOpacity>
           </View>
         }
@@ -96,9 +96,9 @@ export default function ChatList() {
 }
 
 const styles = StyleSheet.create({
-  title: { fontSize: 30, fontWeight: "800", letterSpacing: -0.7 },
+  title: { fontSize: 38, fontWeight: "900" },
   row: { flexDirection: "row", alignItems: "center", gap: 12, padding: 14, borderRadius: 18, borderWidth: 1, marginBottom: 10 },
   avatar: { width: 52, height: 52, borderRadius: 999 },
-  emptyIcon: { width: 64, height: 64, borderRadius: 999, alignItems: "center", justifyContent: "center" },
-  discoverBtn: { paddingHorizontal: 24, paddingVertical: 12, borderRadius: 999, marginTop: 16 },
+  emptyIcon: { width: 86, height: 86, borderRadius: 999, alignItems: "center", justifyContent: "center" },
+  discoverBtn: { paddingHorizontal: 34, paddingVertical: 16, borderRadius: 999, marginTop: 24 },
 });

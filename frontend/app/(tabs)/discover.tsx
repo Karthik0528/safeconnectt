@@ -78,9 +78,9 @@ export default function Discover() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={["top"]}>
-      <View style={{ paddingHorizontal: 20, paddingTop: 8 }}>
+      <View style={{ paddingHorizontal: 20, paddingTop: 14 }}>
         <Text style={[styles.title, { color: colors.text }]}>Discover</Text>
-        <Text style={{ color: colors.textMuted, marginTop: 2 }}>
+        <Text style={{ color: colors.textMuted, marginTop: 6, fontSize: 16, lineHeight: 22 }}>
           Find verified women travellers & local guides by city.
         </Text>
 
@@ -144,20 +144,20 @@ export default function Discover() {
                 <Image source={{ uri: item.avatar_url }} style={styles.avatar} />
                 <View style={{ flex: 1 }}>
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                    <Text style={{ fontWeight: "700", fontSize: 16, color: colors.text }}>{item.name}</Text>
+                    <Text style={{ fontWeight: "900", fontSize: 22, color: colors.text }}>{item.name}</Text>
                     {item.verified && <VerifiedBadge size={11} />}
                   </View>
                   <Text style={{ color: colors.textMuted, fontSize: 13 }}>
-                    {item.age} · {item.countries_visited} countries · ⭐ {item.rating}
+                    {item.age} · {item.countries_visited} countries · {item.rating}
                   </Text>
                   {item.latest_trip && (
                     <Text style={{ color: colors.primary, fontSize: 12, marginTop: 2 }} numberOfLines={1}>
-                      ✈️ {item.latest_trip.destination}, {item.latest_trip.country}
+                      {item.latest_trip.destination}, {item.latest_trip.country}
                     </Text>
                   )}
                 </View>
               </TouchableOpacity>
-              {item.bio ? <Text style={{ color: colors.textMuted, fontSize: 13, marginTop: 10 }} numberOfLines={2}>{item.bio}</Text> : null}
+              {item.bio ? <Text style={{ color: colors.textMuted, fontSize: 17, marginTop: 16 }} numberOfLines={2}>{item.bio}</Text> : null}
               <View style={{ flexDirection: "row", gap: 8, marginTop: 12 }}>
                 <TouchableOpacity
                   testID={`request-${item.id}`}
@@ -227,14 +227,14 @@ export default function Discover() {
                 <Image source={{ uri: item.avatar_url }} style={styles.avatar} />
                 <View style={{ flex: 1 }}>
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                    <Text style={{ fontWeight: "700", fontSize: 16, color: colors.text }}>{item.name}</Text>
+                    <Text style={{ fontWeight: "900", fontSize: 22, color: colors.text }}>{item.name}</Text>
                     {item.verified && <VerifiedBadge size={11} />}
                   </View>
                   <Text style={{ color: colors.textMuted, fontSize: 13 }}>
-                    📍 {item.city}, {item.country} · {item.experience_years}y exp
+                    {item.city}, {item.country} · {item.experience_years}y exp
                   </Text>
                   <Text style={{ color: colors.primary, fontWeight: "700", marginTop: 4 }}>
-                    ${item.price_per_day}/day{item.reviews_count > 0 ? ` · ⭐ ${item.rating} (${item.reviews_count})` : ""}
+                    ${item.price_per_day}/day{item.reviews_count > 0 ? ` · ${item.rating} (${item.reviews_count})` : ""}
                   </Text>
                 </View>
                 <Feather name="chevron-right" size={20} color={colors.textMuted} />
@@ -269,13 +269,13 @@ export default function Discover() {
 }
 
 const styles = StyleSheet.create({
-  title: { fontSize: 30, fontWeight: "800", letterSpacing: -0.7 },
-  searchBar: { flexDirection: "row", alignItems: "center", paddingHorizontal: 14, paddingVertical: 12, borderRadius: 16, borderWidth: 1, marginTop: 16 },
-  card: { padding: 16, borderRadius: 20, borderWidth: 1, marginBottom: 12 },
-  avatar: { width: 60, height: 60, borderRadius: 999 },
-  actionBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 12, borderRadius: 999 },
+  title: { fontSize: 38, fontWeight: "900" },
+  searchBar: { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 16, borderRadius: 24, borderWidth: 1, marginTop: 20 },
+  card: { padding: 18, borderRadius: 24, borderWidth: 1, marginBottom: 16 },
+  avatar: { width: 76, height: 76, borderRadius: 999 },
+  actionBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 14, borderRadius: 999 },
   tag: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 },
-  becomeCard: { flexDirection: "row", alignItems: "center", gap: 14, padding: 18, borderRadius: 22 },
-  becomeIcon: { width: 48, height: 48, borderRadius: 14, backgroundColor: "rgba(255,255,255,0.25)", alignItems: "center", justifyContent: "center" },
+  becomeCard: { flexDirection: "row", alignItems: "center", gap: 14, padding: 20, borderRadius: 24 },
+  becomeIcon: { width: 58, height: 58, borderRadius: 18, backgroundColor: "rgba(255,255,255,0.25)", alignItems: "center", justifyContent: "center" },
   emptyIcon: { width: 64, height: 64, borderRadius: 999, alignItems: "center", justifyContent: "center" },
 });

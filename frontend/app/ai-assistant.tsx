@@ -69,12 +69,12 @@ export default function AiAssistant() {
           <Feather name="arrow-left" size={20} color="#fff" />
         </TouchableOpacity>
         <View style={styles.aiAvatar}>
-          <Feather name="cpu" size={20} color="#fff" />
+          <Feather name="cpu" size={26} color="#fff" />
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={{ color: "#fff", fontWeight: "800", fontSize: 18 }}>SafeAI</Text>
-          <Text style={{ color: "rgba(255,255,255,0.8)", fontSize: 12 }}>
-            {busy ? "Thinking…" : "Online · trained for women's safety"}
+          <Text style={{ color: "#fff", fontWeight: "900", fontSize: 24 }}>SafeAI</Text>
+          <Text style={{ color: "rgba(255,255,255,0.8)", fontSize: 15 }}>
+            {busy ? "Thinking..." : "Online · trained for women's safety"}
           </Text>
         </View>
       </LinearGradient>
@@ -84,7 +84,7 @@ export default function AiAssistant() {
           ref={listRef}
           data={messages}
           keyExtractor={(m) => m.id}
-          contentContainerStyle={{ padding: 16, paddingBottom: 24 }}
+          contentContainerStyle={{ padding: 20, paddingBottom: 24 }}
           renderItem={({ item }) => (
             <View
               testID={`msg-${item.role}`}
@@ -104,7 +104,7 @@ export default function AiAssistant() {
             busy ? (
               <View style={[styles.bubble, styles.aiBubble, { backgroundColor: colors.surface, borderColor: colors.border, flexDirection: "row", gap: 8 }]}>
                 <ActivityIndicator size="small" color={colors.primary} />
-                <Text style={{ color: colors.textMuted }}>SafeAI is thinking…</Text>
+                <Text style={{ color: colors.textMuted }}>SafeAI is thinking...</Text>
               </View>
             ) : null
           }
@@ -123,7 +123,7 @@ export default function AiAssistant() {
                 style={[styles.suggestion, { backgroundColor: colors.chipBg }]}
               >
                 <Feather name="zap" size={14} color={colors.primary} />
-                <Text style={{ color: colors.text, flex: 1, fontSize: 13 }}>{s}</Text>
+                <Text style={{ color: colors.text, flex: 1, fontSize: 16, lineHeight: 21 }}>{s}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -134,7 +134,7 @@ export default function AiAssistant() {
             testID="ai-input"
             value={input}
             onChangeText={setInput}
-            placeholder="Ask SafeAI anything…"
+            placeholder="Ask SafeAI anything..."
             placeholderTextColor={colors.textMuted}
             style={[styles.input, { color: colors.text }]}
             multiline
@@ -156,14 +156,14 @@ export default function AiAssistant() {
 }
 
 const styles = StyleSheet.create({
-  header: { flexDirection: "row", alignItems: "center", gap: 10, padding: 16, paddingTop: 12, borderBottomLeftRadius: 24, borderBottomRightRadius: 24 },
-  back: { width: 36, height: 36, borderRadius: 12, backgroundColor: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center" },
-  aiAvatar: { width: 40, height: 40, borderRadius: 999, backgroundColor: "rgba(255,255,255,0.25)", alignItems: "center", justifyContent: "center" },
-  bubble: { maxWidth: "85%", paddingHorizontal: 14, paddingVertical: 10, borderRadius: 18, marginBottom: 8 },
+  header: { flexDirection: "row", alignItems: "center", gap: 14, padding: 20, paddingTop: 18, paddingBottom: 26, borderBottomLeftRadius: 28, borderBottomRightRadius: 28 },
+  back: { width: 46, height: 46, borderRadius: 16, backgroundColor: "rgba(255,255,255,0.18)", alignItems: "center", justifyContent: "center" },
+  aiAvatar: { width: 54, height: 54, borderRadius: 999, backgroundColor: "rgba(255,255,255,0.22)", alignItems: "center", justifyContent: "center" },
+  bubble: { maxWidth: "88%", paddingHorizontal: 16, paddingVertical: 14, borderRadius: 22, marginBottom: 10 },
   userBubble: { alignSelf: "flex-end", borderBottomRightRadius: 4 },
   aiBubble: { alignSelf: "flex-start", borderWidth: 1, borderBottomLeftRadius: 4 },
-  suggestion: { flexDirection: "row", alignItems: "center", gap: 8, padding: 12, borderRadius: 14, marginBottom: 6 },
-  inputBar: { flexDirection: "row", alignItems: "flex-end", gap: 8, padding: 10, paddingHorizontal: 14, borderTopWidth: 1, paddingBottom: Platform.OS === "ios" ? 18 : 10 },
-  input: { flex: 1, fontSize: 16, maxHeight: 100, minHeight: 24, paddingVertical: 6 },
-  sendBtn: { width: 40, height: 40, borderRadius: 999, alignItems: "center", justifyContent: "center" },
+  suggestion: { flexDirection: "row", alignItems: "center", gap: 12, padding: 16, borderRadius: 20, marginBottom: 10 },
+  inputBar: { flexDirection: "row", alignItems: "flex-end", gap: 10, padding: 12, paddingHorizontal: 16, borderTopWidth: 1, paddingBottom: Platform.OS === "ios" ? 18 : 12 },
+  input: { flex: 1, fontSize: 18, maxHeight: 100, minHeight: 34, paddingVertical: 6 },
+  sendBtn: { width: 54, height: 54, borderRadius: 999, alignItems: "center", justifyContent: "center" },
 });

@@ -78,7 +78,7 @@ export default function Home() {
               <Text style={[styles.greet, { color: colors.textMuted }]}>{greeting},</Text>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                 <Text style={[styles.name, { color: colors.text }]} testID="home-greeting">
-                  {firstName} 👋
+                  {firstName}
                 </Text>
                 {user?.verified && <VerifiedBadge />}
               </View>
@@ -112,7 +112,7 @@ export default function Home() {
             <TouchableOpacity onPress={() => router.push("/trip/create")} testID="empty-trip-cta">
               <LinearGradient colors={colors.gradientPrimary} style={styles.emptyTrip}>
                 <Feather name="map" size={24} color="#fff" />
-                <Text style={styles.emptyTripText}>Plan your first solo adventure ✨</Text>
+                <Text style={styles.emptyTripText}>Plan your first solo adventure</Text>
                 <Text style={styles.emptyTripSub}>Tap to create a trip and find women going your way.</Text>
               </LinearGradient>
             </TouchableOpacity>
@@ -240,21 +240,21 @@ const styles = StyleSheet.create({
   headerHero: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 24, borderBottomLeftRadius: 28, borderBottomRightRadius: 28 },
   headerRow: { flexDirection: "row", alignItems: "center" },
   greet: { fontSize: 14 },
-  name: { fontSize: 26, fontWeight: "800", letterSpacing: -0.5, marginTop: 2 },
-  iconBtn: { width: 44, height: 44, borderRadius: 16, alignItems: "center", justifyContent: "center" },
+  name: { fontSize: 34, fontWeight: "900", marginTop: 2 },
+  iconBtn: { width: 54, height: 54, borderRadius: 18, alignItems: "center", justifyContent: "center" },
   bellDot: { position: "absolute", top: 10, right: 12, width: 8, height: 8, borderRadius: 4, backgroundColor: "#EC4899" },
   stats: { flexDirection: "row", gap: 10, marginTop: 20 },
-  statBox: { flex: 1, padding: 14, borderRadius: 18 },
-  quickRow: { flexDirection: "row", paddingHorizontal: 16, marginTop: -8, marginBottom: 16, gap: 10 },
-  qa: { flex: 1, alignItems: "center", padding: 12, borderRadius: 18, borderWidth: 1 },
-  qaIcon: { width: 38, height: 38, borderRadius: 12, alignItems: "center", justifyContent: "center" },
+  statBox: { flex: 1, padding: 16, borderRadius: 22 },
+  quickRow: { flexDirection: "row", paddingHorizontal: 16, marginTop: -4, marginBottom: 16, gap: 10 },
+  qa: { flex: 1, alignItems: "center", padding: 14, borderRadius: 20, borderWidth: 1 },
+  qaIcon: { width: 44, height: 44, borderRadius: 14, alignItems: "center", justifyContent: "center" },
   section: { paddingHorizontal: 20, marginTop: 16 },
-  emptyTrip: { padding: 24, borderRadius: 24, alignItems: "flex-start", gap: 6 },
-  emptyTripText: { color: "#fff", fontSize: 18, fontWeight: "700" },
-  emptyTripSub: { color: "rgba(255,255,255,0.85)", fontSize: 13 },
+  emptyTrip: { padding: 26, borderRadius: 24, alignItems: "flex-start", gap: 8 },
+  emptyTripText: { color: "#fff", fontSize: 22, fontWeight: "900" },
+  emptyTripSub: { color: "rgba(255,255,255,0.85)", fontSize: 16, lineHeight: 22 },
   tripCard: { width: 240, borderRadius: 20, borderWidth: 1, overflow: "hidden" },
   tripImg: { width: "100%", height: 120 },
-  travCard: { width: 110, padding: 12, borderRadius: 16, borderWidth: 1, alignItems: "center", marginRight: 10 },
+  travCard: { width: 118, padding: 14, borderRadius: 18, borderWidth: 1, alignItems: "center", marginRight: 10 },
   travAvatar: { width: 60, height: 60, borderRadius: 999 },
   aiCard: { padding: 20, borderRadius: 24, flexDirection: "row", alignItems: "center", gap: 16 },
   aiBadge: { color: "rgba(255,255,255,0.85)", fontSize: 10, fontWeight: "700", letterSpacing: 1 },

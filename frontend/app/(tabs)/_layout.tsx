@@ -24,10 +24,7 @@ function FloatingTabBar({ state, descriptors, navigation }: any) {
       <BlurView
         intensity={isDark ? 40 : 70}
         tint={isDark ? "dark" : "light"}
-        style={[
-          styles.bar,
-          { borderColor: colors.glassBorder, backgroundColor: colors.glassBg },
-        ]}
+        style={[styles.bar, { borderColor: colors.border, backgroundColor: colors.glassBg }]}
       >
         {state.routes.map((route: any, idx: number) => {
           const focused = state.index === idx;
@@ -46,7 +43,7 @@ function FloatingTabBar({ state, descriptors, navigation }: any) {
                 style={styles.sosWrap}
               >
                 <LinearGradient
-                  colors={["#EF4444", "#F43F5E"]}
+                  colors={colors.gradientSos}
                   style={styles.sosBtn}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
@@ -67,12 +64,12 @@ function FloatingTabBar({ state, descriptors, navigation }: any) {
             >
               <Feather
                 name={ICONS[route.name] || "circle"}
-                size={22}
+                size={24}
                 color={focused ? colors.primary : colors.textMuted}
               />
               <Text
                 style={{
-                  fontSize: 10,
+                  fontSize: 12,
                   marginTop: 4,
                   color: focused ? colors.primary : colors.textMuted,
                   fontWeight: focused ? "700" : "500",
@@ -120,7 +117,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: 16,
     right: 16,
-    bottom: Platform.OS === "ios" ? 28 : 16,
+    bottom: Platform.OS === "ios" ? 26 : 16,
     alignItems: "center",
   },
   bar: {
@@ -128,7 +125,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 18,
-    paddingVertical: 10,
+    paddingVertical: 12,
     borderRadius: 999,
     borderWidth: 1,
     width: "100%",
@@ -142,8 +139,8 @@ const styles = StyleSheet.create({
   item: { alignItems: "center", justifyContent: "center", flex: 1, paddingVertical: 6 },
   sosWrap: { flex: 1, alignItems: "center", justifyContent: "center", marginTop: -28 },
   sosBtn: {
-    width: 60,
-    height: 60,
+    width: 68,
+    height: 68,
     borderRadius: 999,
     alignItems: "center",
     justifyContent: "center",

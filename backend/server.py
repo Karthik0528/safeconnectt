@@ -23,7 +23,7 @@ load_dotenv(ROOT_DIR / ".env")
 MONGO_URL = os.environ["MONGO_URL"]
 DB_NAME = os.environ["DB_NAME"]
 JWT_SECRET = os.environ["JWT_SECRET"]
-EMERGENT_LLM_KEY = os.environ["EMERGENT_LLM_KEY"]
+EMERGENT_LLM_KEY = "demo_key"
 JWT_ALG = "HS256"
 JWT_EXP_DAYS = 30
 
@@ -677,20 +677,22 @@ SYSTEM_PROMPT = (
 
 @api.post("/ai/chat")
 async def ai_chat(req: AiChatReq, current=Depends(get_current_user)):
-    from emergentintegrations.llm.chat import LlmChat, UserMessage
+    demo_reply = f"""
+SafeConnect AI Assistant
 
-    session_id = f"{current['id']}:{req.session_id}"
-    chat = (
-        LlmChat(api_key=EMERGENT_LLM_KEY, session_id=session_id, system_message=SYSTEM_PROMPT)
-        .with_model("openai", "gpt-4o")
-    )
-    try:
-        reply = await chat.send_message(UserMessage(text=req.message))
-    except Exception as e:
-        logger.exception("AI chat failed")
-        raise HTTPException(500, f"AI error: {e}")
+You said: {req.message}
 
-    # persist history
+Safety Tips:
+• Share live location with trusted contacts
+• Avoid isolated places at night
+• Keep emergency numbers ready
+• Use verified accommodations
+• Stay connected with local guides
+
+This is currently running in local demo mode.
+"""
+
+    # Save user message
     await db.ai_messages.insert_one(
         {
             "id": new_id(),
@@ -701,17 +703,20 @@ async def ai_chat(req: AiChatReq, current=Depends(get_current_user)):
             "created_at": now_iso(),
         }
     )
+
+    # Save assistant reply
     await db.ai_messages.insert_one(
         {
             "id": new_id(),
             "user_id": current["id"],
             "session_id": req.session_id,
             "role": "assistant",
-            "text": reply,
+            "text": demo_reply,
             "created_at": now_iso(),
         }
     )
-    return {"reply": reply}
+
+    return {"reply": demo_reply}
 
 
 @api.get("/ai/history/{session_id}")

@@ -8,7 +8,7 @@ import { useTheme } from "../src/theme";
 import { Chip, GradientButton } from "../src/ui";
 
 const INTERESTS = ["Food", "Hiking", "Beach", "Culture", "Nightlife", "Photography", "Art", "Wellness", "Coffee", "Books"];
-const LANGUAGES = ["English", "Spanish", "French", "Japanese", "Hindi", "German", "Italian", "Portuguese", "Mandarin", "Arabic"];
+const LANGUAGES = ["English", "Spanish", "French", "Japanese", "Hindi", "German", "Italian", "Portuguese", "Mandarin", "Arabic", "Telugu", "Tamil", "Marathi", "Bengali", "Russian", "Korean", "Turkish", "Vietnamese", "Polish", "Dutch", "Swedish"];
 
 export default function EditProfile() {
   const router = useRouter();

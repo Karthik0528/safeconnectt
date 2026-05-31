@@ -1,0 +1,16 @@
+export const COLORS = {
+  background: "#180B13",
+  card: "#27151F",
+  cardDark: "#1B0B17",
+  border: "#513044",
+  rose: "#F9A8D4",
+  magenta: "#D42C74",
+  purple: "#8B5CF6",
+  plum: "#3B1F2E",
+  red: "#EF535A",
+  text: "#FFF0F4",
+  muted: "#C9B4BE",
+  gradient1: "#D42C74",
+  gradient2: "#B32060",
+  gradient3: "#8B5CF6",
+};

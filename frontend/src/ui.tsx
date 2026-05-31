@@ -36,7 +36,7 @@ export function GradientButton({
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={{
-          paddingVertical: 16,
+          paddingVertical: 17,
           paddingHorizontal: 24,
           flexDirection: "row",
           alignItems: "center",
@@ -49,7 +49,7 @@ export function GradientButton({
         ) : (
           <>
             {icon && <Feather name={icon} size={18} color="#fff" />}
-            <Text style={{ color: "#fff", fontWeight: "700", fontSize: 16, letterSpacing: 0.2 }}>
+            <Text style={{ color: "#fff", fontWeight: "800", fontSize: 16 }}>
               {title}
             </Text>
           </>
@@ -154,14 +154,14 @@ export function Chip({ label, active, onPress, testID }: { label: string; active
       onPress={onPress}
       activeOpacity={0.8}
       style={{
-        paddingHorizontal: 14,
-        paddingVertical: 8,
+        paddingHorizontal: 18,
+        paddingVertical: 10,
         borderRadius: radii.full,
         backgroundColor: active ? colors.primary : colors.chipBg,
         marginRight: 8,
       }}
     >
-      <Text style={{ color: active ? "#fff" : colors.text, fontWeight: "600", fontSize: 13 }}>{label}</Text>
+      <Text style={{ color: active ? "#fff" : colors.text, fontWeight: "800", fontSize: 14 }}>{label}</Text>
     </TouchableOpacity>
   );
 }
