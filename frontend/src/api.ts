@@ -1,6 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const BASE = process.env.EXPO_PUBLIC_BACKEND_URL;
+const BASE = "https://safeconnectt-1.onrender.com";
+console.log("BASE URL =", BASE);
 export const API_BASE = `${BASE}/api`;
 
 const TOKEN_KEY = "safeconnect_token";
