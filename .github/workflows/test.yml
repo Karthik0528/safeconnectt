@@ -67,9 +67,23 @@ jobs:
       run: |
         python run_suite.py
 
-    - name: Upload Excel Test Report Artifact
+    - name: Run Baseline Load Test (Guides Endpoint)
+      run: |
+        python tests/load_test.py --url http://127.0.0.1:8000/api/guides --users 100 --duration 60 --name guides
+
+    - name: Run Baseline Load Test (Health/Routing Endpoint)
+      run: |
+        python tests/load_test.py --url http://127.0.0.1:8000/api/ --users 100 --duration 60 --name health
+
+    - name: Generate Unified Load Test Excel Report
+      run: |
+        python tests/generate_excel.py
+
+    - name: Upload Excel Test Report Artifacts
       uses: actions/upload-artifact@v4
       if: always()
       with:
-        name: E2E-Test-Report-saFeConnect
-        path: test_reports/E2E_Test_Report_saFeConnect.xlsx
+        name: E2E-and-Load-Test-Reports
+        path: |
+          test_reports/E2E_Test_Report_saFeConnect.xlsx
+          test_reports/Load_Test_Report_saFeConnect.xlsx
