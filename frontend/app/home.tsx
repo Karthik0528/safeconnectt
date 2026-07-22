@@ -1,5 +1,4 @@
 import React from "react";
-
 import {
   View,
   Text,
@@ -9,29 +8,20 @@ import {
 } from "react-native";
 
 import { signOut } from "firebase/auth";
-
 import { auth } from "../firebaseConfig";
-
 import { useRouter } from "expo-router";
 
 export default function Home() {
-
   const router = useRouter();
 
   const handleLogout = async () => {
-
     await signOut(auth);
-
     alert("Logged Out");
-
     router.replace("/login");
   };
 
   return (
-    <ScrollView
-      contentContainerStyle={styles.container}
-    >
-
+    <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.heading}>
         Welcome to saFeConnect
       </Text>
@@ -56,7 +46,7 @@ export default function Home() {
         </Text>
 
         <Text style={styles.cardText}>
-          Find hospitals, police stations and guides.
+          Find hospitals, police stations and trusted guides.
         </Text>
       </View>
 
@@ -73,12 +63,12 @@ export default function Home() {
       <TouchableOpacity
         style={styles.logoutButton}
         onPress={handleLogout}
+        activeOpacity={0.8}
       >
         <Text style={styles.logoutText}>
           Logout
         </Text>
       </TouchableOpacity>
-
     </ScrollView>
   );
 }
@@ -87,53 +77,80 @@ const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
     padding: 25,
-    backgroundColor: "#fff5f7",
+    backgroundColor: "#170B14", // Main dark background
   },
 
   heading: {
-    fontSize: 30,
-    fontWeight: "bold",
-    color: "#ff4d6d",
+    fontSize: 32,
+    fontWeight: "700",
+    color: "#FFFFFF",
     marginTop: 50,
+    marginBottom: 8,
   },
 
   subheading: {
-    color: "gray",
-    marginTop: 10,
-    marginBottom: 30,
     fontSize: 16,
+    color: "#B7ADB5",
+    marginBottom: 35,
+    lineHeight: 24,
   },
 
   card: {
-    backgroundColor: "white",
+    backgroundColor: "#28141E",
     padding: 22,
-    borderRadius: 18,
+    borderRadius: 20,
     marginBottom: 18,
-    elevation: 3,
+
+    borderWidth: 1,
+    borderColor: "#513145",
+
+    shadowColor: "#000",
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
+    shadowOffset: {
+      width: 0,
+      height: 5,
+    },
+
+    elevation: 5,
   },
 
   cardTitle: {
     fontSize: 18,
-    fontWeight: "bold",
-    marginBottom: 8,
+    fontWeight: "700",
+    color: "#FFFFFF",
+    marginBottom: 10,
   },
 
   cardText: {
-    color: "gray",
-    lineHeight: 22,
+    fontSize: 15,
+    color: "#B8AEB5",
+    lineHeight: 23,
   },
 
   logoutButton: {
-    backgroundColor: "#ff4d6d",
-    padding: 18,
-    borderRadius: 14,
+    backgroundColor: "#F45D6B",
+    paddingVertical: 18,
+    borderRadius: 18,
     alignItems: "center",
+    justifyContent: "center",
     marginTop: 20,
+    marginBottom: 35,
+
+    shadowColor: "#F45D6B",
+    shadowOpacity: 0.45,
+    shadowRadius: 10,
+    shadowOffset: {
+      width: 0,
+      height: 5,
+    },
+
+    elevation: 8,
   },
 
   logoutText: {
-    color: "white",
-    fontWeight: "bold",
+    color: "#FFFFFF",
     fontSize: 17,
+    fontWeight: "700",
   },
 });

@@ -5,13 +5,14 @@ import os
 import uuid
 import logging
 import asyncio
+import random
 from pathlib import Path
 from datetime import datetime, timezone, timedelta
 from typing import List, Optional, Literal
 
 import bcrypt
 import jwt
-from fastapi import FastAPI, APIRouter, HTTPException, Depends, Header, status
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, Header, status, WebSocket, WebSocketDisconnect, Query
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -45,7 +46,95 @@ def new_id() -> str:
     return str(uuid.uuid4())
 
 
+# ------------------------- Realtime WebSockets Manager -------------------------
+class ConnectionManager:
+    def __init__(self):
+        self.active_connections: List[WebSocket] = []
+
+    async def connect(self, websocket: WebSocket):
+        await websocket.accept()
+        self.active_connections.append(websocket)
+
+    def disconnect(self, websocket: WebSocket):
+        if websocket in self.active_connections:
+            self.active_connections.remove(websocket)
+
+    async def broadcast(self, event_type: str, payload: dict):
+        message = {"event": event_type, "data": payload, "time": now_iso()}
+        for connection in list(self.active_connections):
+            try:
+                await connection.send_json(message)
+            except Exception:
+                self.disconnect(connection)
+
+ws_manager = ConnectionManager()
+
+
+@app.websocket("/api/ws/{client_id}")
+async def websocket_endpoint(websocket: WebSocket, client_id: str):
+    await ws_manager.connect(websocket)
+    try:
+        while True:
+            data = await websocket.receive_text()
+            await websocket.send_json({"event": "pong", "client_id": client_id})
+    except WebSocketDisconnect:
+        ws_manager.disconnect(websocket)
+    except Exception:
+        ws_manager.disconnect(websocket)
+
+
 # ------------------------- Models -------------------------
+class SendOtpReq(BaseModel):
+    email: EmailStr
+
+
+class VerifyOtpReq(BaseModel):
+    email: EmailStr
+    otp: str
+
+
+class GoogleAuthReq(BaseModel):
+    email: EmailStr
+    name: str
+    avatar_url: Optional[str] = None
+    google_id: Optional[str] = None
+    role: Optional[str] = "user"
+
+
+class UserSignupReq(BaseModel):
+    name: str
+    username: Optional[str] = None
+    email: EmailStr
+    password: str
+    phone: str
+    gender: Optional[str] = "Female"
+    dob: Optional[str] = ""
+    age: Optional[int] = 25
+    state: Optional[str] = ""
+    district: Optional[str] = ""
+    city: Optional[str] = ""
+    emergency_contact: Optional[dict] = None
+    avatar_url: Optional[str] = None
+    government_id: Optional[str] = None
+    selfie: Optional[str] = None
+    bio: Optional[str] = ""
+    interests: List[str] = []
+    languages: List[str] = []
+
+
+class GuideSignupReq(UserSignupReq):
+    guide_id_num: Optional[str] = ""
+    tourism_id: Optional[str] = ""
+    guide_govt_id: Optional[str] = None
+    address_proof: Optional[str] = None
+    experience_years: Optional[int] = 1
+    certifications: List[str] = []
+    bio: Optional[str] = ""
+    services: List[str] = []
+    availability: Optional[str] = "Available"
+    price_per_day: Optional[int] = 1500
+
+
 class SignupReq(BaseModel):
     name: str
     email: EmailStr
@@ -61,7 +150,12 @@ class SignupReq(BaseModel):
 
 
 class LoginReq(BaseModel):
-    email: EmailStr
+    email: str
+    password: str
+
+
+class AdminLoginReq(BaseModel):
+    email: str
     password: str
 
 
@@ -98,7 +192,6 @@ class TripCreate(BaseModel):
 class Trip(TripCreate):
     id: str
     user_id: str
-    created_at: str
 
 
 class MatchRequest(BaseModel):
@@ -132,6 +225,18 @@ class BookingCreate(BaseModel):
     guide_id: str
     date: str
     notes: str = ""
+
+
+class GuideReviewCreate(BaseModel):
+    rating: int = Field(..., ge=1, le=5)
+    emoji: Optional[str] = "🙂 Good"
+    comment: str = ""
+    booking_id: Optional[str] = None
+
+
+class GuideReportCreate(BaseModel):
+    reason: str
+    details: Optional[str] = ""
 
 
 class PostCreate(BaseModel):
@@ -193,27 +298,56 @@ async def get_current_user(authorization: Optional[str] = Header(None)) -> dict:
     user = await db.users.find_one({"id": payload["sub"]}, {"_id": 0, "password": 0})
     if not user:
         raise HTTPException(401, "User not found")
+    if user.get("status") == "suspended":
+        raise HTTPException(403, "Account suspended. Please contact admin support.")
     return user
+
+
+async def get_admin_user(current=Depends(get_current_user)) -> dict:
+    if current.get("role") != "admin":
+        raise HTTPException(403, "Admin privileges required")
+    return current
 
 
 def public_user(u: dict) -> dict:
     return {
         "id": u["id"],
-        "name": u["name"],
-        "email": u["email"],
-        "age": u["age"],
+        "name": u.get("name", ""),
+        "username": u.get("username", ""),
+        "email": u.get("email", ""),
+        "role": u.get("role", "user"),
+        "gender": u.get("gender", "Female"),
+        "dob": u.get("dob", ""),
+        "age": u.get("age", 25),
         "phone": u.get("phone", ""),
+        "state": u.get("state", ""),
+        "district": u.get("district", ""),
+        "city": u.get("city", ""),
+        "emergency_contact": u.get("emergency_contact") or {},
+        "avatar_url": u.get("avatar_url") or "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80",
+        "government_id": u.get("government_id") or u.get("id_image_b64"),
+        "selfie": u.get("selfie") or u.get("selfie_b64"),
+        "verified": bool(u.get("verified", False)),
+        "verification_status": u.get("verification_status", "approved" if u.get("verified") else "pending"),
+        "status": u.get("status", "active"),
         "bio": u.get("bio", ""),
         "interests": u.get("interests", []),
-        "languages": u.get("languages", []),
-        "avatar_url": u.get("avatar_url"),
-        "verified": u.get("verified", False),
-        "safety_score": u.get("safety_score", 85),
+        "languages": u.get("languages", ["English", "Hindi"]),
+        "safety_score": u.get("safety_score", 100),
         "countries_visited": u.get("countries_visited", 0),
         "trips_count": u.get("trips_count", 0),
         "rating": u.get("rating", 5.0),
-        "is_guide": bool(u.get("is_guide", False)),
+        "is_guide": bool(u.get("is_guide") or u.get("role") == "guide"),
         "guide_id": u.get("guide_id"),
+        "guide_id_num": u.get("guide_id_num", ""),
+        "tourism_id": u.get("tourism_id", ""),
+        "guide_govt_id": u.get("guide_govt_id"),
+        "address_proof": u.get("address_proof"),
+        "experience_years": u.get("experience_years", 0),
+        "certifications": u.get("certifications", []),
+        "services": u.get("services", []),
+        "availability": u.get("availability", "Available"),
+        "price_per_day": u.get("price_per_day", 1500),
         "created_at": u.get("created_at", now_iso()),
     }
 
@@ -224,44 +358,372 @@ async def root():
     return {"app": "SafeConnect", "status": "ok", "time": now_iso()}
 
 
-# ------------------------- Routes: Auth -------------------------
+# ------------------------- Routes: Auth & OTP -------------------------
+@api.post("/auth/send-otp")
+async def send_otp(req: SendOtpReq):
+    otp = str(random.randint(100000, 999999))
+    expires = (datetime.now(timezone.utc) + timedelta(minutes=10)).isoformat()
+    await db.otps.update_one(
+        {"email": req.email.lower()},
+        {"$set": {"otp": otp, "expires_at": expires, "verified": False}},
+        upsert=True,
+    )
+    logger.info("Generated OTP %s for email %s", otp, req.email)
+    return {"ok": True, "message": f"Verification OTP sent to {req.email}", "otp": otp}
+
+
+@api.post("/auth/verify-otp")
+async def verify_otp(req: VerifyOtpReq):
+    rec = await db.otps.find_one({"email": req.email.lower()})
+    if not rec or rec.get("otp") != req.otp.strip():
+        raise HTTPException(400, "Invalid verification OTP code")
+    await db.otps.update_one({"email": req.email.lower()}, {"$set": {"verified": True}})
+    return {"ok": True, "message": "Email verified successfully!"}
+
+
+class GoogleOnboardingReq(BaseModel):
+    email: str
+    name: Optional[str] = "Google User"
+    username: str
+    password: str
+    phone: str
+    age: Optional[int] = 25
+    gender: Optional[str] = "Female"
+    dob: Optional[str] = ""
+    country: Optional[str] = "India"
+    state: str
+    district: str
+    city: str
+    government_id: str
+    selfie: Optional[str] = None
+    role: Optional[str] = "user"
+    terms_accepted: bool
+    safety_policy_accepted: bool
+
+
+@api.get("/auth/check-username")
+async def check_username_available(username: str):
+    if not username or not username.strip():
+        return {"available": False, "message": "Username is required."}
+    clean_uname = username.strip().lower()
+    existing = await db.users.find_one({"username": clean_uname})
+    if existing:
+        return {"available": False, "message": f"Username '{username}' already exists. Please choose a different username."}
+    return {"available": True, "message": "Username is available!"}
+
+
+@api.post("/auth/google")
+async def google_auth(req: GoogleAuthReq):
+    existing = await db.users.find_one({"email": req.email.lower()})
+    if existing and existing.get("onboarding_completed"):
+        token = make_token(existing["id"])
+        return {"token": token, "user": public_user(existing), "onboarding_required": False}
+    
+    # Needs onboarding details (username, password, location, ID proof, checkboxes)
+    return {
+        "onboarding_required": True,
+        "email": req.email.lower(),
+        "name": req.name,
+        "avatar_url": req.avatar_url,
+        "role": req.role or "user",
+    }
+
+
+@api.post("/auth/complete-google-onboarding")
+async def complete_google_onboarding(req: GoogleOnboardingReq):
+    if not req.terms_accepted or not req.safety_policy_accepted:
+        raise HTTPException(400, "You must accept the Women's Safety Policies and Terms of Service to register.")
+    
+    if not req.username or not req.username.strip() or not req.password or not req.phone or not req.state or not req.district or not req.city or not req.government_id:
+        raise HTTPException(400, "Please fill in all required fields including Government ID proof.")
+    
+    # Check username availability
+    clean_uname = req.username.strip().lower()
+    username_taken = await db.users.find_one({"username": clean_uname, "email": {"$ne": req.email.lower()}})
+    if username_taken:
+        raise HTTPException(400, f"Username '{req.username}' already exists. Please choose a different username.")
+        
+    # Check age restriction (< 18 rejection)
+    req_age = req.age or 25
+    if req_age < 18:
+        raise HTTPException(400, "Registration rejected: You must be at least 18 years old to join saFeConnect.")
+    
+    email = req.email.lower()
+    existing = await db.users.find_one({"email": email})
+    
+    user_id = existing["id"] if existing else new_id()
+    user_data = {
+        "id": user_id,
+        "role": req.role or "user",
+        "name": req.name or req.username,
+        "username": clean_uname,
+        "email": email,
+        "password": hash_pw(req.password),
+        "phone": req.phone,
+        "gender": req.gender or "Female",
+        "age": req_age,
+        "dob": req.dob or "",
+        "country": req.country or "India",
+        "state": req.state,
+        "district": req.district,
+        "city": req.city,
+        "area": req.city,
+        "government_id": req.government_id,
+        "selfie": req.selfie or "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80",
+        "verified": False,
+        "verification_status": "pending",
+        "onboarding_completed": True,
+        "terms_accepted": True,
+        "safety_policy_accepted": True,
+        "status": "active",
+        "bio": "Verified Solo Female Traveller",
+        "interests": ["Solo Travel", "Culture"],
+        "languages": ["English", "Hindi"],
+        "safety_score": 100,
+        "created_at": now_iso(),
+    }
+    
+    if existing:
+        await db.users.update_one({"id": user_id}, {"$set": user_data})
+    else:
+        await db.users.insert_one(user_data)
+        
+    await ws_manager.broadcast("user_registered", {"user_id": user_id, "name": req.name, "email": email})
+    token = make_token(user_id)
+    return {"token": token, "user": public_user(user_data)}
+
+
 @api.post("/auth/signup")
-async def signup(req: SignupReq):
+async def signup(req: UserSignupReq):
     existing = await db.users.find_one({"email": req.email.lower()})
     if existing:
-        raise HTTPException(400, "Email already registered")
+        raise HTTPException(400, "Email already registered.")
+        
+    if req.username:
+        clean_uname = req.username.strip().lower()
+        uname_taken = await db.users.find_one({"username": clean_uname})
+        if uname_taken:
+            raise HTTPException(400, f"Username '{req.username}' already exists. Please choose a different username.")
+    
+    user_age = req.age or 25
+    if user_age < 18:
+        raise HTTPException(400, "Registration rejected: You must be at least 18 years old to join saFeConnect.")
+    
     user_id = new_id()
     user = {
         "id": user_id,
+        "role": "user",
         "name": req.name,
+        "username": req.username.strip().lower() if req.username else req.name.lower().replace(" ", "_"),
         "email": req.email.lower(),
         "password": hash_pw(req.password),
-        "age": req.age,
         "phone": req.phone,
+        "gender": req.gender or "Female",
+        "dob": req.dob or "",
+        "age": user_age,
+        "state": req.state or "",
+        "district": req.district or "",
+        "city": req.city or "",
+        "emergency_contact": req.emergency_contact or {},
+        "avatar_url": req.avatar_url or "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80",
+        "government_id": req.government_id,
+        "selfie": req.selfie,
+        "verified": False,
+        "verification_status": "pending",
+        "status": "active",
         "bio": req.bio or "",
-        "interests": req.interests,
-        "languages": req.languages or ["English"],
-        "avatar_url": req.avatar_url
-        or "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80",
-        "id_image_b64": req.id_image_b64,
-        "selfie_b64": req.selfie_b64,
-        "verified": bool(req.id_image_b64 and req.selfie_b64),
-        "safety_score": 85,
+        "interests": req.interests or ["Travel", "Culture"],
+        "languages": req.languages or ["English", "Hindi"],
+        "safety_score": 100,
         "countries_visited": 0,
         "trips_count": 0,
         "rating": 5.0,
+        "is_guide": False,
         "created_at": now_iso(),
     }
     await db.users.insert_one(user)
+    await ws_manager.broadcast("user_registered", {"user_id": user_id, "name": req.name, "role": "user"})
     token = make_token(user_id)
     return {"token": token, "user": public_user(user)}
 
 
+
+
+@api.post("/auth/guide-signup")
+async def guide_signup(req: GuideSignupReq):
+    existing = await db.users.find_one({"email": req.email.lower()})
+    if existing:
+        raise HTTPException(400, "Email already registered.")
+        
+    guide_age = req.age or 25
+    if guide_age < 18:
+        raise HTTPException(400, "Guide registration rejected: Guides must be at least 18 years old.")
+        
+    if req.username:
+        clean_uname = req.username.strip().lower()
+        uname_taken = await db.users.find_one({"username": clean_uname})
+        if uname_taken:
+            raise HTTPException(400, f"Username '{req.username}' already exists. Please choose a different username.")
+    
+    user_id = new_id()
+    guide_id = new_id()
+    user = {
+        "id": user_id,
+        "role": "guide",
+        "is_guide": True,
+        "guide_id": guide_id,
+        "name": req.name,
+        "username": req.username.strip().lower() if req.username else req.name.lower().replace(" ", "_"),
+        "email": req.email.lower(),
+        "password": hash_pw(req.password),
+        "phone": req.phone,
+        "gender": req.gender or "Female",
+        "dob": req.dob or "",
+        "age": guide_age,
+        "state": req.state or "",
+        "district": req.district or "",
+        "city": req.city or "",
+        "emergency_contact": req.emergency_contact or {},
+        "avatar_url": req.avatar_url or "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=400&q=80",
+        "government_id": req.government_id,
+        "selfie": req.selfie,
+        "guide_id_num": req.guide_id_num or "",
+        "tourism_id": req.tourism_id or "",
+        "guide_govt_id": req.guide_govt_id or req.government_id,
+        "address_proof": req.address_proof or req.government_id,
+        "experience_years": req.experience_years if req.experience_years is not None else 1,
+        "certifications": req.certifications or ["Certified Tour Guide"],
+        "services": req.services or ["Heritage Walks", "City Orientation"],
+        "availability": req.availability or "Available",
+        "price_per_day": req.price_per_day if req.price_per_day is not None else 1500,
+        "verified": False,
+        "verification_status": "pending",
+        "status": "active",
+        "bio": req.bio or "",
+        "interests": req.interests or ["Guiding", "Local Heritage"],
+        "languages": req.languages or ["English", "Hindi"],
+        "safety_score": 100,
+        "created_at": now_iso(),
+    }
+    await db.users.insert_one(user)
+
+    guide_doc = {
+        "id": guide_id,
+        "user_id": user_id,
+        "name": req.name,
+        "email": req.email.lower(),
+        "phone": req.phone,
+        "city": req.city or "Jaipur",
+        "country": "India",
+        "languages": req.languages or ["English", "Hindi"],
+        "experience_years": req.experience_years or 1,
+        "bio": req.bio or "",
+        "price_per_day": req.price_per_day or 1500,
+        "avatar_url": user["avatar_url"],
+        "certifications": req.certifications or ["Certified Tour Guide"],
+        "services": req.services or ["Heritage Walks"],
+        "availability": req.availability or "Available",
+        "verified": False,
+        "verification_status": "pending",
+        "rating": 5.0,
+        "reviews_count": 0,
+        "created_at": now_iso(),
+    }
+    await db.guides.insert_one(guide_doc)
+    await ws_manager.broadcast("guide_registered", {"user_id": user_id, "guide_id": guide_id, "name": req.name})
+
+    token = make_token(user_id)
+    if "_id" in guide_doc:
+        del guide_doc["_id"]
+    return {"token": token, "user": public_user(user), "guide": guide_doc}
+
+
+class GuideProfileReq(BaseModel):
+    name: Optional[str] = None
+    age: Optional[int] = None
+    gender: Optional[str] = None
+    experience_years: Optional[int] = None
+    languages: Optional[List[str]] = None
+    price_per_hour: Optional[int] = None
+    price_per_day: Optional[int] = None
+    bio: Optional[str] = None
+    services: Optional[List[str]] = None
+    cities_covered: Optional[List[str]] = None
+
+
+@api.post("/guide/profile")
+async def create_or_update_guide_profile(req: GuideProfileReq, current=Depends(get_current_user)):
+    user_id = current["id"]
+    
+    req_age = req.age or current.get("age", 25)
+    if req_age < 18:
+        raise HTTPException(400, "Guide profile update rejected: Guides must be at least 18 years old.")
+        
+    guide_id = current.get("guide_id") or new_id()
+    
+    user_patch = {
+        "is_guide": True,
+        "role": "guide",
+        "guide_id": guide_id,
+        "age": req_age,
+    }
+    if req.name: user_patch["name"] = req.name
+    if req.gender: user_patch["gender"] = req.gender
+    if req.bio: user_patch["bio"] = req.bio
+    if req.languages: user_patch["languages"] = req.languages
+    if req.price_per_day: user_patch["price_per_day"] = req.price_per_day
+    if req.price_per_hour: user_patch["price_per_hour"] = req.price_per_hour
+    if req.experience_years: user_patch["experience_years"] = req.experience_years
+    
+    await db.users.update_one({"id": user_id}, {"$set": user_patch})
+    
+    guide_doc = {
+        "id": guide_id,
+        "user_id": user_id,
+        "name": req.name or current.get("name"),
+        "email": current.get("email"),
+        "phone": current.get("phone"),
+        "age": req_age,
+        "gender": req.gender or current.get("gender", "Female"),
+        "experience_years": req.experience_years or current.get("experience_years", 1),
+        "languages": req.languages or current.get("languages", ["English", "Hindi"]),
+        "price_per_hour": req.price_per_hour or 250,
+        "price_per_day": req.price_per_day or current.get("price_per_day", 1500),
+        "services": req.services or current.get("services", ["Heritage Walks", "City Orientation"]),
+        "bio": req.bio or current.get("bio", ""),
+        "cities_covered": req.cities_covered or [current.get("city", "Local City")],
+        "avatar_url": current.get("avatar_url"),
+        "verified": current.get("verified", False),
+        "verification_status": current.get("verification_status", "pending"),
+        "created_at": now_iso(),
+    }
+    
+    existing_g = await db.guides.find_one({"user_id": user_id})
+    if existing_g:
+        await db.guides.update_one({"user_id": user_id}, {"$set": guide_doc})
+    else:
+        await db.guides.insert_one(guide_doc)
+        
+    await ws_manager.broadcast("profile_updated", {"user_id": user_id})
+    updated_user = await db.users.find_one({"id": user_id}, {"_id": 0, "password": 0})
+    if "_id" in guide_doc:
+        del guide_doc["_id"]
+    return {"ok": True, "message": "Guide details updated successfully!", "user": public_user(updated_user), "guide": guide_doc}
+
+
 @api.post("/auth/login")
 async def login(req: LoginReq):
-    user = await db.users.find_one({"email": req.email.lower()})
+    identifier = req.email.strip().lower()
+    user = await db.users.find_one({
+        "$or": [
+            {"email": identifier},
+            {"username": identifier}
+        ]
+    })
     if not user or not verify_pw(req.password, user["password"]):
-        raise HTTPException(401, "Invalid email or password")
+        raise HTTPException(401, "Invalid email/username or password")
+    if user.get("status") == "suspended":
+        raise HTTPException(403, "Your account has been suspended by the Admin.")
     token = make_token(user["id"])
     return {"token": token, "user": public_user(user)}
 
@@ -273,12 +735,214 @@ async def me(current=Depends(get_current_user)):
 
 @api.patch("/auth/me")
 async def update_me(updates: dict, current=Depends(get_current_user)):
-    allowed = {"name", "bio", "interests", "languages", "avatar_url", "phone"}
+    allowed = {
+        "name", "bio", "interests", "languages", "avatar_url", "phone",
+        "state", "district", "city", "emergency_contact", "availability", "price_per_day", "services"
+    }
     upd = {k: v for k, v in updates.items() if k in allowed}
     if upd:
         await db.users.update_one({"id": current["id"]}, {"$set": upd})
+        if current.get("is_guide") and current.get("guide_id"):
+            guide_upd = {k: v for k, v in upd.items() if k in {"name", "bio", "languages", "avatar_url", "city", "availability", "price_per_day", "services"}}
+            if guide_upd:
+                await db.guides.update_one({"id": current["guide_id"]}, {"$set": guide_upd})
+        await ws_manager.broadcast("profile_updated", {"user_id": current["id"]})
     user = await db.users.find_one({"id": current["id"]}, {"_id": 0, "password": 0})
     return public_user(user)
+
+
+# ------------------------- Routes: Admin Portal & Dashboard -------------------------
+@api.post("/admin/login")
+async def admin_login(req: AdminLoginReq):
+    identifier = req.email.strip().lower()
+    user = await db.users.find_one({
+        "$or": [
+            {"email": identifier},
+            {"username": identifier}
+        ]
+    })
+    if not user or not verify_pw(req.password, user["password"]):
+        raise HTTPException(401, "Invalid admin email/username or password")
+    if user.get("role") != "admin":
+        raise HTTPException(403, "Access denied. User does not have Admin privileges.")
+    token = make_token(user["id"])
+    return {"token": token, "user": public_user(user)}
+
+
+@api.get("/admin/accounts")
+async def list_admin_accounts(
+    tab: Optional[str] = "pending_users",
+    q: Optional[str] = None,
+    state: Optional[str] = None,
+    city: Optional[str] = None,
+    admin=Depends(get_admin_user),
+):
+    all_docs = await db.users.find({}, {"_id": 0, "password": 0}).to_list(1000)
+    non_admins = [u for u in all_docs if u.get("role") != "admin"]
+
+    filtered = []
+    for u in non_admins:
+        is_g = bool(u.get("role") == "guide" or u.get("is_guide"))
+        v_status = u.get("verification_status", "pending")
+        is_verified = bool(u.get("verified", False))
+
+        if tab == "pending_users":
+            if not is_g and (v_status == "pending" or not is_verified) and v_status != "rejected":
+                filtered.append(u)
+        elif tab == "pending_guides":
+            if is_g and (v_status == "pending" or not is_verified) and v_status != "rejected":
+                filtered.append(u)
+        elif tab == "approved_users":
+            if not is_g and (is_verified or v_status == "approved"):
+                filtered.append(u)
+        elif tab == "approved_guides":
+            if is_g and (is_verified or v_status == "approved"):
+                filtered.append(u)
+        elif tab == "rejected":
+            if v_status == "rejected":
+                filtered.append(u)
+        elif tab in ("all_users", "all", "all_accounts"):
+            filtered.append(u)
+        else:
+            filtered.append(u)
+
+    if state:
+        st_low = state.lower()
+        filtered = [u for u in filtered if st_low in u.get("state", "").lower()]
+    if city:
+        ct_low = city.lower()
+        filtered = [u for u in filtered if ct_low in u.get("city", "").lower()]
+    if q:
+        q_low = q.lower()
+        filtered = [
+            u for u in filtered
+            if q_low in u.get("name", "").lower()
+            or q_low in u.get("email", "").lower()
+            or q_low in u.get("username", "").lower()
+            or q_low in u.get("phone", "").lower()
+            or q_low in u.get("city", "").lower()
+            or q_low in u.get("state", "").lower()
+        ]
+
+    # Sort newest first
+    filtered.sort(key=lambda x: x.get("created_at", ""), reverse=True)
+
+    out = []
+    for u in filtered:
+        pub = public_user(u)
+        if u.get("is_guide") or u.get("role") == "guide":
+            g = await db.guides.find_one({"user_id": u["id"]}, {"_id": 0})
+            if g:
+                pub["guide_details"] = g
+        out.append(pub)
+
+    return out
+
+
+@api.post("/admin/accounts/{user_id}/approve")
+async def approve_account(user_id: str, admin=Depends(get_admin_user)):
+    user = await db.users.find_one({"id": user_id})
+    if not user:
+        raise HTTPException(404, "User account not found")
+    
+    upd = {"verified": True, "verification_status": "approved"}
+    await db.users.update_one({"id": user_id}, {"$set": upd})
+    if user.get("guide_id"):
+        await db.guides.update_one({"id": user["guide_id"]}, {"$set": upd})
+    elif user.get("is_guide") or user.get("role") == "guide":
+        await db.guides.update_one({"user_id": user_id}, {"$set": upd})
+
+    await ws_manager.broadcast("account_verified", {"user_id": user_id, "verified": True, "status": "approved"})
+    updated = await db.users.find_one({"id": user_id}, {"_id": 0, "password": 0})
+    return {"ok": True, "message": "Account approved and Verified Badge granted!", "user": public_user(updated)}
+
+
+@api.post("/admin/accounts/{user_id}/reject")
+async def reject_account(user_id: str, admin=Depends(get_admin_user)):
+    user = await db.users.find_one({"id": user_id})
+    if not user:
+        raise HTTPException(404, "User account not found")
+    
+    upd = {"verified": False, "verification_status": "rejected"}
+    await db.users.update_one({"id": user_id}, {"$set": upd})
+    if user.get("guide_id"):
+        await db.guides.update_one({"id": user["guide_id"]}, {"$set": upd})
+    elif user.get("is_guide") or user.get("role") == "guide":
+        await db.guides.update_one({"user_id": user_id}, {"$set": upd})
+
+    await ws_manager.broadcast("account_rejected", {"user_id": user_id, "verified": False, "status": "rejected"})
+    updated = await db.users.find_one({"id": user_id}, {"_id": 0, "password": 0})
+    return {"ok": True, "message": "Account registration rejected.", "user": public_user(updated)}
+
+
+@api.post("/admin/accounts/{user_id}/suspend")
+async def suspend_account(user_id: str, admin=Depends(get_admin_user)):
+    await db.users.update_one({"id": user_id}, {"$set": {"status": "suspended"}})
+    await ws_manager.broadcast("account_suspended", {"user_id": user_id})
+    return {"ok": True, "message": "Account suspended successfully."}
+
+
+@api.post("/admin/accounts/{user_id}/restore")
+async def restore_account(user_id: str, admin=Depends(get_admin_user)):
+    await db.users.update_one({"id": user_id}, {"$set": {"status": "active"}})
+    await ws_manager.broadcast("account_restored", {"user_id": user_id})
+    return {"ok": True, "message": "Account restored successfully."}
+
+
+@api.post("/admin/accounts/{user_id}/toggle-badge")
+async def toggle_verification_badge(user_id: str, admin=Depends(get_admin_user)):
+    user = await db.users.find_one({"id": user_id})
+    if not user:
+        raise HTTPException(404, "Account not found")
+    
+    new_verified = not user.get("verified", False)
+    new_status = "approved" if new_verified else "pending"
+    upd = {"verified": new_verified, "verification_status": new_status}
+    
+    await db.users.update_one({"id": user_id}, {"$set": upd})
+    if user.get("guide_id"):
+        await db.guides.update_one({"id": user["guide_id"]}, {"$set": upd})
+    elif user.get("is_guide") or user.get("role") == "guide":
+        await db.guides.update_one({"user_id": user_id}, {"$set": upd})
+
+    await ws_manager.broadcast("badge_toggled", {"user_id": user_id, "verified": new_verified, "status": new_status})
+    updated = await db.users.find_one({"id": user_id}, {"_id": 0, "password": 0})
+    return {"ok": True, "user": public_user(updated)}
+
+
+@api.delete("/admin/accounts/{user_id}")
+async def delete_account(user_id: str, admin=Depends(get_admin_user)):
+    user = await db.users.find_one({"id": user_id})
+    if not user:
+        raise HTTPException(404, "Account not found")
+
+    await db.users.delete_one({"id": user_id})
+    await db.guides.delete_many({"user_id": user_id})
+    await db.trips.delete_many({"user_id": user_id})
+    await db.posts.delete_many({"user_id": user_id})
+    await db.comments.delete_many({"user_id": user_id})
+    await db.bookings.delete_many({"$or": [{"user_id": user_id}, {"guide_id": user.get("guide_id")}]})
+    await db.chats.delete_many({"members": user_id})
+    await db.messages.delete_many({"sender_id": user_id})
+    await db.emergency_contacts.delete_many({"user_id": user_id})
+    await db.sos_alerts.delete_many({"user_id": user_id})
+
+    await ws_manager.broadcast("account_deleted", {"user_id": user_id})
+    return {"ok": True, "message": "Account and all associated records permanently removed."}
+
+
+@api.get("/admin/export")
+async def export_admin_data(admin=Depends(get_admin_user)):
+    users = await db.users.find({}, {"_id": 0, "password": 0}).to_list(1000)
+    guides = await db.guides.find({}, {"_id": 0}).to_list(1000)
+    return {
+        "export_date": now_iso(),
+        "total_users": len(users),
+        "total_guides": len(guides),
+        "users": users,
+        "guides": guides,
+    }
+
 
 
 # ------------------------- Routes: Trips -------------------------
@@ -468,6 +1132,47 @@ def clear_guides_cache():
     GUIDES_CACHE.clear()
 
 
+POSITIVE_WORDS = {
+    "great", "excellent", "wonderful", "amazing", "helpful", "safe", "friendly",
+    "best", "highly", "recommend", "professional", "good", "awesome", "polite",
+    "kind", "punctual", "trusted", "sweet", "superb", "nice", "fantastic", "reliable"
+}
+
+NEGATIVE_WORDS = {
+    "bad", "terrible", "awful", "unsafe", "rude", "horrible", "scam", "fake",
+    "dangerous", "misbehave", "late", "worst", "fraud", "harassment", "threat",
+    "extortion", "creepy", "inappropriate", "scared", "scary", "dirty", "unprofessional"
+}
+
+EMOJI_SCORES = {
+    "very bad": -2.0,
+    "bad": -1.0,
+    "normal": 0.0,
+    "good": 1.0,
+    "very good": 2.0,
+}
+
+
+def analyze_sentiment(rating: int, comment: str, emoji: str = "") -> float:
+    text_low = (comment or "").lower()
+    words = text_low.split()
+    pos_count = sum(1 for w in words if w.strip(".,!?:;()") in POSITIVE_WORDS)
+    neg_count = sum(1 for w in words if w.strip(".,!?:;()") in NEGATIVE_WORDS)
+
+    emoji_bonus = 0.0
+    for e_key, e_val in EMOJI_SCORES.items():
+        if e_key in (emoji or "").lower():
+            emoji_bonus = e_val
+            break
+
+    # Rating normalized score (-2.0 to +2.0)
+    rating_score = (rating - 3) * 1.0
+    text_score = (pos_count - neg_count) * 0.8
+
+    total = rating_score + emoji_bonus + text_score
+    return round(total, 2)
+
+
 @api.get("/guides")
 async def list_guides(city: Optional[str] = None, country: Optional[str] = None, q: Optional[str] = None):
     cache_key = f"{city}:{country}:{q}"
@@ -486,9 +1191,28 @@ async def list_guides(city: Optional[str] = None, country: Optional[str] = None,
             {"city": {"$regex": q, "$options": "i"}},
             {"country": {"$regex": q, "$options": "i"}},
         ]
-    guides = await db.guides.find(query, {"_id": 0}).sort("created_at", -1).to_list(200)
-    set_cached_guides(cache_key, guides)
-    return guides
+
+    raw_guides = await db.guides.find(query, {"_id": 0}).to_list(500)
+
+    # Filter out suspended or banned guides
+    active_guides = [
+        g for g in raw_guides
+        if g.get("status") != "suspended" and g.get("status") != "banned"
+    ]
+
+    # Sort dynamically by net sentiment score so +ve sentiment guides appear top/first, and -ve sentiment guides appear last/bottom!
+    active_guides.sort(
+        key=lambda g: (
+            g.get("net_rank_score", (g.get("rating", 5.0) * 3.0)),
+            g.get("positive_percent", 100),
+            g.get("safety_score", 100),
+            g.get("rating", 5.0)
+        ),
+        reverse=True
+    )
+
+    set_cached_guides(cache_key, active_guides)
+    return active_guides
 
 
 @api.get("/guides/locations")
@@ -497,6 +1221,117 @@ async def guide_locations():
     cities = await db.guides.distinct("city")
     countries = await db.guides.distinct("country")
     return {"cities": sorted([c for c in cities if c]), "countries": sorted([c for c in countries if c])}
+
+
+@api.post("/guides/{guide_id}/reviews")
+async def create_guide_review(guide_id: str, req: GuideReviewCreate, current=Depends(get_current_user)):
+    g = await db.guides.find_one({"id": guide_id})
+    if not g:
+        raise HTTPException(404, "Guide not found")
+
+    sentiment_val = analyze_sentiment(req.rating, req.comment, req.emoji or "")
+
+    rev = {
+        "id": new_id(),
+        "guide_id": guide_id,
+        "user_id": current["id"],
+        "user_name": current.get("name", "Verified Traveller"),
+        "user_avatar": current.get("avatar_url"),
+        "rating": req.rating,
+        "emoji": req.emoji or "🙂 Good",
+        "comment": req.comment,
+        "sentiment_score": sentiment_val,
+        "booking_id": req.booking_id,
+        "created_at": now_iso(),
+    }
+    await db.guide_reviews.insert_one(rev)
+
+    # Compute aggregate rating and sentiment ranking for the guide
+    all_revs = await db.guide_reviews.find({"guide_id": guide_id}).to_list(1000)
+    avg_rating = round(sum(r["rating"] for r in all_revs) / len(all_revs), 1)
+    avg_sentiment = round(sum(r.get("sentiment_score", 0.0) for r in all_revs) / len(all_revs), 2)
+
+    pos_reviews = sum(1 for r in all_revs if r.get("sentiment_score", 0) >= 0)
+    neg_reviews = sum(1 for r in all_revs if r.get("sentiment_score", 0) < 0)
+    pos_pct = round((pos_reviews / len(all_revs)) * 100) if all_revs else 100
+
+    net_rank_score = round(avg_rating * 3.0 + avg_sentiment * 2.0 + (pos_reviews - neg_reviews) * 0.5, 2)
+
+    upd = {
+        "rating": avg_rating,
+        "reviews_count": len(all_revs),
+        "sentiment_score": avg_sentiment,
+        "positive_percent": pos_pct,
+        "net_rank_score": net_rank_score,
+    }
+    await db.guides.update_one({"id": guide_id}, {"$set": upd})
+    clear_guides_cache()
+
+    rev.pop("_id", None)
+    return {"ok": True, "review": rev, "guide_stats": upd}
+
+
+@api.get("/guides/{guide_id}/reviews")
+async def get_guide_reviews(guide_id: str):
+    revs = await db.guide_reviews.find({"guide_id": guide_id}, {"_id": 0}).sort("created_at", -1).to_list(200)
+    return revs
+
+
+@api.post("/guides/{guide_id}/report")
+async def report_guide(guide_id: str, req: GuideReportCreate, current=Depends(get_current_user)):
+    g = await db.guides.find_one({"id": guide_id})
+    if not g:
+        raise HTTPException(404, "Guide account not found")
+
+    # Ensure caller is not reporting themselves
+    if g.get("user_id") == current["id"]:
+        raise HTTPException(400, "You cannot report your own guide account.")
+
+    report_doc = {
+        "id": new_id(),
+        "guide_id": guide_id,
+        "guide_name": g.get("name"),
+        "reporter_user_id": current["id"],
+        "reporter_name": current.get("name", "Anonymous"),
+        "reason": req.reason,
+        "details": req.details or "",
+        "created_at": now_iso(),
+    }
+    await db.guide_reports.insert_one(report_doc)
+
+    # Decrease guide safety score (-25 points per report)
+    current_guide_score = max(0, g.get("safety_score", 100) - 25)
+
+    # Total reports count against guide
+    total_reports = await db.guide_reports.count_documents({"guide_id": guide_id})
+
+    # Auto-ban threshold: safety_score < 50 OR total_reports >= 2
+    is_banned = current_guide_score < 50 or total_reports >= 2
+    new_status = "suspended" if is_banned else g.get("status", "active")
+
+    await db.guides.update_one(
+        {"id": guide_id},
+        {"$set": {"safety_score": current_guide_score, "status": new_status, "reports_count": total_reports}}
+    )
+
+    guide_user_id = g.get("user_id")
+    if guide_user_id:
+        await db.users.update_one(
+            {"id": guide_user_id},
+            {"$set": {"safety_score": current_guide_score, "status": new_status}}
+        )
+        if is_banned:
+            await ws_manager.broadcast("account_suspended", {"user_id": guide_user_id, "reason": req.reason})
+
+    clear_guides_cache()
+
+    return {
+        "ok": True,
+        "message": "In-trip incident report submitted to Platform Governance. Action taken.",
+        "guide_safety_score": current_guide_score,
+        "banned": is_banned,
+        "status": new_status,
+    }
 
 
 @api.post("/guides/register")
@@ -547,7 +1382,7 @@ async def book_guide(guide_id: str, req: BookingCreate, current=Depends(get_curr
         "user_id": current["id"],
         "date": req.date,
         "notes": req.notes,
-        "status": "confirmed",
+        "status": "pending",
         "created_at": now_iso(),
     }
     await db.bookings.insert_one(booking)
@@ -563,6 +1398,56 @@ async def my_bookings(current=Depends(get_current_user)):
         g = await db.guides.find_one({"id": b["guide_id"]}, {"_id": 0})
         out.append({**b, "guide": g})
     return out
+
+
+@api.get("/bookings/guide-managed")
+async def guide_managed_bookings(current=Depends(get_current_user)):
+    g = await db.guides.find_one({"user_id": current["id"]}, {"_id": 0})
+    guide_id = g["id"] if g else current.get("guide_id") or current["id"]
+
+    items = await db.bookings.find(
+        {"$or": [{"guide_id": guide_id}, {"guide_id": current["id"]}]},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(100)
+
+    out = []
+    for b in items:
+        u = await db.users.find_one({"id": b["user_id"]}, {"_id": 0, "password": 0})
+        user_info = public_user(u) if u else {
+            "name": "Traveller User",
+            "city": b.get("city", "Local Area"),
+            "phone": "+91-9876543210",
+            "safety_score": 100
+        }
+        out.append({
+            **b,
+            "user": user_info,
+            "place": b.get("place") or (g.get("city") if g else "Local Destination"),
+            "time": b.get("time") or "Day Session (10:00 AM)"
+        })
+    return out
+
+
+@api.post("/bookings/{booking_id}/accept")
+async def accept_guide_booking(booking_id: str, current=Depends(get_current_user)):
+    b = await db.bookings.find_one({"id": booking_id})
+    if not b:
+        raise HTTPException(404, "Booking request not found")
+
+    await db.bookings.update_one({"id": booking_id}, {"$set": {"status": "confirmed", "updated_at": now_iso()}})
+    await ws_manager.broadcast("booking_accepted", {"booking_id": booking_id, "user_id": b["user_id"]})
+    return {"ok": True, "message": "Booking request accepted! Traveller notified."}
+
+
+@api.post("/bookings/{booking_id}/reject")
+async def reject_guide_booking(booking_id: str, current=Depends(get_current_user)):
+    b = await db.bookings.find_one({"id": booking_id})
+    if not b:
+        raise HTTPException(404, "Booking request not found")
+
+    await db.bookings.update_one({"id": booking_id}, {"$set": {"status": "rejected", "updated_at": now_iso()}})
+    await ws_manager.broadcast("booking_rejected", {"booking_id": booking_id, "user_id": b["user_id"]})
+    return {"ok": True, "message": "Booking request declined."}
 
 
 # ------------------------- Routes: Community Feed -------------------------
@@ -1010,7 +1895,29 @@ _SAMPLE_POSTS_DISABLED = [
 
 
 async def seed_data():
-    """Cold-start: no seeding. Purge legacy demo accounts and their content."""
+    """Ensure default admin account exists and purge legacy non-Indian demo accounts."""
+    admin_user = await db.users.find_one({"email": "admin@safeconnect.com"})
+    if not admin_user:
+        admin = {
+            "id": "admin-super-001",
+            "role": "admin",
+            "name": "Super Admin",
+            "email": "admin@safeconnect.com",
+            "password": hash_pw("admin123"),
+            "phone": "+91-9999999999",
+            "gender": "Female",
+            "dob": "1990-01-01",
+            "state": "Tamil Nadu",
+            "city": "Chennai",
+            "avatar_url": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=400&q=80",
+            "verified": True,
+            "verification_status": "approved",
+            "status": "active",
+            "created_at": now_iso(),
+        }
+        await db.users.insert_one(admin)
+        logger.info("Created default Admin account (admin@safeconnect.com / admin123)")
+
     demo_users = await db.users.find({"email": {"$regex": "@safeconnect.demo$"}}, {"id": 1}).to_list(100)
     demo_ids = [u["id"] for u in demo_users]
     if demo_ids:
@@ -1019,7 +1926,7 @@ async def seed_data():
         await db.trips.delete_many({"user_id": {"$in": demo_ids}})
         await db.matches.delete_many({"$or": [{"from_user": {"$in": demo_ids}}, {"to_user": {"$in": demo_ids}}]})
         logger.info("Purged %s legacy demo users and related data", len(demo_ids))
-    # Also clear any legacy seeded guides that were inserted without a user_id (older builds)
+    
     res = await db.guides.delete_many({"user_id": {"$exists": False}})
     if res.deleted_count:
         logger.info("Purged %s legacy seeded guides", res.deleted_count)
@@ -1049,7 +1956,41 @@ class MockCollection:
         for item in self.data:
             match = True
             for k, v in filter.items():
-                if isinstance(v, dict) and "$regex" in v:
+                if k == "$or":
+                    or_match = False
+                    for cond in v:
+                        cond_match = True
+                        for ck, cv in cond.items():
+                            if isinstance(cv, dict) and "$regex" in cv:
+                                pattern = cv["$regex"]
+                                if not re.search(pattern, item.get(ck, ""), re.IGNORECASE):
+                                    cond_match = False
+                                    break
+                            elif isinstance(cv, dict) and "$ne" in cv:
+                                if item.get(ck) == cv["$ne"]:
+                                    cond_match = False
+                                    break
+                            elif isinstance(cv, dict) and "$in" in cv:
+                                if item.get(ck) not in cv["$in"]:
+                                    cond_match = False
+                                    break
+                            else:
+                                doc_val = item.get(ck)
+                                if isinstance(doc_val, list):
+                                    if cv not in doc_val:
+                                        cond_match = False
+                                        break
+                                else:
+                                    if doc_val != cv:
+                                        cond_match = False
+                                        break
+                        if cond_match:
+                            or_match = True
+                            break
+                    if not or_match:
+                        match = False
+                        break
+                elif isinstance(v, dict) and "$regex" in v:
                     pattern = v["$regex"]
                     if not re.search(pattern, item.get(k, ""), re.IGNORECASE):
                         match = False
@@ -1158,6 +2099,11 @@ class MockCollection:
     async def update_one(self, filter, update, *args, **kwargs):
         item = await self.find_one(filter)
         if not item:
+            if kwargs.get("upsert"):
+                new_doc = filter.copy()
+                if "$set" in update:
+                    new_doc.update(update["$set"])
+                self.data.append(new_doc)
             return
         if "$set" in update:
             for k, v in update["$set"].items():
@@ -1179,7 +2125,7 @@ class MockCollection:
     async def delete_one(self, filter, *args, **kwargs):
         item = await self.find_one(filter)
         deleted = 0
-        if item in self.data:
+        if item and item in self.data:
             self.data.remove(item)
             deleted = 1
         class Result:
@@ -1263,23 +2209,93 @@ class MockDatabase:
         self.matches = MockCollection("matches")
         self.messages = MockCollection("messages")
         self.chats = MockCollection("chats")
-        self.guides = MockCollection("guides", _SAMPLE_GUIDES_DISABLED)
+        self.guides = MockCollection("guides")
         self.bookings = MockCollection("bookings")
         self.posts = MockCollection("posts")
         self.comments = MockCollection("comments")
         self.emergency_contacts = MockCollection("emergency_contacts")
         self.sos_alerts = MockCollection("sos_alerts")
         self.ai_messages = MockCollection("ai_messages")
+        self.otps = MockCollection("otps")
+        self.guide_reviews = MockCollection("guide_reviews")
+        self.guide_reports = MockCollection("guide_reports")
+
     def __getitem__(self, name):
+        if not hasattr(self, name):
+            setattr(self, name, MockCollection(name))
         return getattr(self, name)
+
+
+ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL", "admin.safeconnect@safeconnect.in").lower()
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "AdminPass2026!Secure")
+
+async def seed_data():
+    try:
+        existing_by_email = await db.users.find_one({"email": ADMIN_EMAIL})
+        if existing_by_email:
+            await db.users.update_one(
+                {"email": ADMIN_EMAIL},
+                {"$set": {"role": "admin", "password": hash_pw(ADMIN_PASSWORD), "verified": True, "verification_status": "approved"}}
+            )
+            logger.info("Admin account updated via ADMIN_EMAIL.")
+        else:
+            admin_user = {
+                "id": "admin-super-001",
+                "name": "Super Admin",
+                "email": ADMIN_EMAIL,
+                "password": hash_pw(ADMIN_PASSWORD),
+                "role": "admin",
+                "gender": "Female",
+                "dob": "1990-01-01",
+                "age": 30,
+                "phone": "+91-9999999999",
+                "state": "Tamil Nadu",
+                "district": "Chennai",
+                "city": "Chennai",
+                "emergency_contact": {},
+                "avatar_url": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=400&q=80",
+                "government_id": "AADHAAR-ADMIN-001",
+                "selfie": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=400&q=80",
+                "verified": True,
+                "verification_status": "approved",
+                "status": "active",
+                "bio": "Platform Security & Safety Governance Admin",
+                "interests": ["Safety Governance"],
+                "languages": ["English", "Hindi"],
+                "safety_score": 100,
+                "countries_visited": 0,
+                "trips_count": 0,
+                "rating": 5.0,
+                "is_guide": False,
+                "created_at": now_iso(),
+            }
+            await db.users.insert_one(admin_user)
+            logger.info("Default Admin account seeded successfully.")
+
+        # Wipe out all automated test & sample garbage accounts (@example.com, test_, usr-pending-, etc.)
+        await db.users.delete_many({
+            "$or": [
+                {"email": {"$regex": "@example\\.com$", "$options": "i"}},
+                {"email": {"$regex": "^test_", "$options": "i"}},
+                {"email": "google_traveller@gmail.com"},
+                {"email": "user_test_ind@safeconnect.in"},
+                {"email": "guide_test_ind@safeconnect.in"},
+                {"id": {"$regex": "^usr-pending-", "$options": "i"}},
+                {"id": {"$regex": "^usr-approved-", "$options": "i"}},
+            ]
+        })
+        logger.info("Cleaned garbage sample & test accounts from database.")
+    except Exception as e:
+        logger.warning("Seed data note: %s", e)
 
 
 @app.on_event("startup")
 async def on_startup():
-    global db
+    global client, db
     try:
-        # Test connection by creating index with timeout
-        await asyncio.wait_for(db.users.create_index("email", unique=True), timeout=2.0)
+        client = AsyncIOMotorClient(MONGO_URL)
+        db = client[DB_NAME]
+        await asyncio.wait_for(db.users.create_index("email", unique=True), timeout=1.5)
         await db.trips.create_index("user_id")
         await db.matches.create_index([("to_user", 1), ("status", 1)])
         await db.messages.create_index([("chat_id", 1), ("created_at", 1)])
@@ -1289,12 +2305,15 @@ async def on_startup():
     except Exception as e:
         logger.warning("MongoDB connection failed or timed out: %s. Swapping to MockDatabase layer for offline execution.", e)
         db = MockDatabase()
+        await seed_data()
 
 
 @app.on_event("shutdown")
 async def on_shutdown():
+    global client
     try:
-        client.close()
+        if client:
+            client.close()
     except Exception:
         pass
 
@@ -1310,4 +2329,4 @@ app.add_middleware(
 
 @app.get("/")
 def home():
-    return {"message": "saFeConnect Backend Running 🚀"}
+    return {"message": "saFeConnect Backend Running 🚀"}

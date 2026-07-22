@@ -18,17 +18,20 @@ export default function Profile() {
 
   const toggleDark = (val: boolean) => {
     setDarkOverride(val);
-    Appearance.setColorScheme(val ? "dark" : "light");
+    try {
+      if (typeof (Appearance as any)?.setColorScheme === "function") {
+        (Appearance as any).setColorScheme(val ? "dark" : "light");
+      }
+    } catch (e) {
+      // Web browser fallback
+    }
   };
 
   const doLogout = async () => {
     try {
-      console.log("Executing logout...");
       await logout();
-      console.log("Logout successful, navigating to login");
       router.replace("/auth/login");
     } catch (error) {
-      console.log("Logout error:", error);
       Alert.alert("Logout Failed", String(error));
     }
   };
@@ -50,46 +53,65 @@ export default function Profile() {
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={["top"]}>
       <ScrollView contentContainerStyle={{ paddingBottom: 140 }}>
         <LinearGradient colors={colors.gradientPrimary} style={styles.hero}>
-          <View style={{ alignItems: "center", paddingHorizontal: 20, paddingTop: 28, paddingBottom: 54 }}>
+          <View style={{ alignItems: "center", paddingHorizontal: 20, paddingTop: 28, paddingBottom: 44 }}>
             <Image source={{ uri: user.avatar_url || undefined }} style={styles.avatar} />
             <View style={{ flexDirection: "row", gap: 6, alignItems: "center", marginTop: 12 }}>
               <Text style={styles.name} testID="profile-name">{user.name}</Text>
-              {user.verified && <VerifiedBadge />}
+              {user.verified && <VerifiedBadge size={16} showLabel />}
             </View>
-            <Text style={{ color: "rgba(255,255,255,0.85)", marginTop: 6, fontSize: 17 }}>{user.email}</Text>
-            <View style={{ flexDirection: "row", marginTop: 22, gap: 42 }}>
-              <Stat n={user.trips_count} l="Trips" />
-              <Stat n={user.countries_visited} l="Countries" />
-              <Stat n={user.rating} l="Rating" decimal />
+            <Text style={{ color: "rgba(255,255,255,0.85)", marginTop: 4, fontSize: 15 }}>{user.email}</Text>
+            <Text style={{ color: "rgba(255,255,255,0.75)", marginTop: 2, fontSize: 13, fontWeight: "600" }}>
+              📍 {user.city || "Chennai"}, {user.state || "Tamil Nadu"}, India
+            </Text>
+
+            <View style={{ flexDirection: "row", marginTop: 18, gap: 36 }}>
+              <Stat n={user.trips_count || 0} l="Trips" />
+              <Stat n={user.countries_visited || 0} l="Countries" />
+              <Stat n={user.rating || 5.0} l="Rating" decimal />
             </View>
           </View>
         </LinearGradient>
 
         <View style={[styles.scoreCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <View style={{ flex: 1 }}>
-              <Text style={{ color: colors.textMuted, fontSize: 14, fontWeight: "900", textTransform: "uppercase", letterSpacing: 2 }}>
-              Safety score
+            <Text style={{ color: colors.textMuted, fontSize: 12, fontWeight: "900", textTransform: "uppercase", letterSpacing: 1.5 }}>
+              Verification & Safety Status
             </Text>
-            <Text style={{ color: colors.text, fontSize: 28, fontWeight: "800", marginTop: 2 }}>
-              {user.safety_score}/100
+            <Text style={{ color: colors.text, fontSize: 22, fontWeight: "800", marginTop: 4 }}>
+              Status: <Text style={{ color: user.verified ? "#34D399" : "#FBBF24" }}>{user.verification_status?.toUpperCase() || "PENDING"}</Text>
             </Text>
-            <Text style={{ color: colors.textMuted, fontSize: 16, marginTop: 4, lineHeight: 22 }}>
-              Boost it by adding emergency contacts & finishing verification.
+            <Text style={{ color: colors.textMuted, fontSize: 13, marginTop: 4, lineHeight: 18 }}>
+              {user.verified
+                ? "Your identity has been verified by Admin. Verified Badge active!"
+                : "Your registration is under Admin review. Verified Badge unlocks after approval."}
             </Text>
           </View>
-          <View style={[styles.scoreRing, { borderColor: colors.primary }]}>
-            <Feather name="shield" size={28} color={colors.primary} />
+          <View style={[styles.scoreRing, { borderColor: user.verified ? "#34D399" : "#FBBF24" }]}>
+            <Feather name={user.verified ? "award" : "clock"} size={26} color={user.verified ? "#34D399" : "#FBBF24"} />
           </View>
         </View>
 
-        <Section title="Account">
-          <Row icon="user" label="Edit profile" onPress={() => router.push("/edit-profile")} testID="row-edit-profile" />
-          <Row icon="map-pin" label={user.is_guide ? "My guide profile" : "Become a Local Guide"} onPress={() => router.push("/guide/register")} testID="row-become-guide" />
-          <Row icon="calendar" label="My bookings" onPress={() => router.push("/bookings")} testID="row-bookings" />
-          <Row icon="map" label="My trips" onPress={() => router.push("/trips")} testID="row-trips" />
+        <Section title="Account & Portals">
+          <Row icon="user" label="Edit Profile Details" onPress={() => router.push("/edit-profile")} testID="row-edit-profile" />
+          <Row
+            icon="map-pin"
+            label="Create / Edit Guide Profile to Guide Travellers"
+            onPress={() => router.push("/guide/edit-profile")}
+            testID="row-guide-portal"
+          />
+          {user.role === "admin" && (
+            <Row
+              icon="shield"
+              label="Admin Governance Dashboard"
+              onPress={() => router.push("/admin")}
+              testID="row-admin-dashboard"
+            />
+          )}
+          <Row icon="calendar" label="My Bookings" onPress={() => router.push("/bookings")} testID="row-bookings" />
+          <Row icon="map" label="My Trips" onPress={() => router.push("/trips")} testID="row-trips" />
         </Section>
 
-        <Section title="Preferences">
+        <Section title="Preferences & Safety">
           <View style={[styles.row, { backgroundColor: colors.surface, borderColor: colors.border }]}>
             <View style={[styles.rowIcon, { backgroundColor: colors.chipBg }]}>
               <Feather name="moon" size={18} color={colors.primary} />
@@ -102,19 +124,14 @@ export default function Profile() {
               trackColor={{ true: colors.primary, false: "#E5E7EB" }}
             />
           </View>
-          <Row icon="bell" label="Notifications" onPress={() => Alert.alert("Notifications", "Configure push alerts in your device settings.")} testID="row-notifs" />
-          <Row icon="globe" label="Language" onPress={() => Alert.alert("Language", "More languages coming soon.")} testID="row-language" />
+          <Row icon="phone" label="Emergency Contacts (SOS)" onPress={() => router.push("/(tabs)/sos")} testID="row-em-contacts" />
+          <Row icon="cpu" label="AI Safety Assistant" onPress={() => router.push("/ai-assistant")} testID="row-ai" />
         </Section>
 
-        <Section title="Safety">
-          <Row icon="phone" label="Emergency contacts" onPress={() => router.push("/(tabs)/sos")} testID="row-em-contacts" />
-          <Row icon="cpu" label="AI assistant" onPress={() => router.push("/ai-assistant")} testID="row-ai" />
-        </Section>
-
-        <Section title="Support">
-          <Row icon="help-circle" label="Help center" onPress={() => Alert.alert("Help", "Email us at hello@safeconnect.app")} testID="row-help" />
-          <Row icon="shield" label="Privacy & policy" onPress={() => Alert.alert("Privacy", "End-to-end encrypted. Data never sold. Verified women only.")} testID="row-privacy" />
-          <Row icon="log-out" label="Sign out" onPress={handleLogout} danger testID="row-logout" />
+        <Section title="System & Support">
+          <Row icon="help-circle" label="Help & Support" onPress={() => Alert.alert("Support", "Email us at support@safeconnect.in")} testID="row-help" />
+          <Row icon="shield" label="Privacy & Security" onPress={() => Alert.alert("Privacy", "JWT Protected. MongoDB persistence. Verified Women Travellers platform.")} testID="row-privacy" />
+          <Row icon="log-out" label="Sign Out" onPress={handleLogout} danger testID="row-logout" />
         </Section>
       </ScrollView>
     </SafeAreaView>
@@ -124,8 +141,8 @@ export default function Profile() {
 function Stat({ n, l, decimal }: { n: number; l: string; decimal?: boolean }) {
   return (
     <View style={{ alignItems: "center" }}>
-      <Text style={{ color: "#fff", fontSize: 28, fontWeight: "900" }}>{decimal ? n.toFixed(1) : n}</Text>
-      <Text style={{ color: "rgba(255,255,255,0.75)", fontSize: 14, marginTop: 2 }}>{l}</Text>
+      <Text style={{ color: "#fff", fontSize: 24, fontWeight: "900" }}>{decimal ? n.toFixed(1) : n}</Text>
+      <Text style={{ color: "rgba(255,255,255,0.75)", fontSize: 13, marginTop: 2 }}>{l}</Text>
     </View>
   );
 }
@@ -134,7 +151,7 @@ function Section({ title, children }: any) {
   const { colors } = useTheme();
   return (
     <View style={{ paddingHorizontal: 20, marginTop: 24 }}>
-      <Text style={{ color: colors.textMuted, fontSize: 14, fontWeight: "900", textTransform: "uppercase", letterSpacing: 2.5, marginBottom: 12 }}>
+      <Text style={{ color: colors.textMuted, fontSize: 12, fontWeight: "900", textTransform: "uppercase", letterSpacing: 2, marginBottom: 12 }}>
         {title}
       </Text>
       {children}
@@ -150,21 +167,21 @@ function Row({ icon, label, onPress, danger, testID }: any) {
       onPress={onPress}
       style={[styles.row, { backgroundColor: colors.surface, borderColor: colors.border }]}
     >
-      <View style={[styles.rowIcon, { backgroundColor: danger ? "#FEE2E2" : colors.chipBg }]}>
-        <Feather name={icon} size={18} color={danger ? "#DC2626" : colors.primary} />
+      <View style={[styles.rowIcon, { backgroundColor: danger ? "rgba(239,83,90,0.15)" : colors.chipBg }]}>
+        <Feather name={icon} size={18} color={danger ? "#EF535A" : colors.primary} />
       </View>
-      <Text style={{ color: danger ? "#EF535A" : colors.text, fontWeight: "800", flex: 1, fontSize: 17 }}>{label}</Text>
+      <Text style={{ color: danger ? "#EF535A" : colors.text, fontWeight: "700", flex: 1, fontSize: 15 }}>{label}</Text>
       <Feather name="chevron-right" size={18} color={colors.textMuted} />
     </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
-  hero: { borderBottomLeftRadius: 34, borderBottomRightRadius: 34 },
-  avatar: { width: 118, height: 118, borderRadius: 999, borderWidth: 4, borderColor: "#fff" },
-  name: { color: "#fff", fontSize: 34, fontWeight: "900" },
-  scoreCard: { marginHorizontal: 20, marginTop: -36, padding: 20, borderRadius: 24, borderWidth: 1, flexDirection: "row", alignItems: "center", gap: 14 },
-  scoreRing: { width: 78, height: 78, borderRadius: 999, borderWidth: 4, alignItems: "center", justifyContent: "center" },
-  row: { flexDirection: "row", alignItems: "center", gap: 14, padding: 18, borderRadius: 20, borderWidth: 1, marginBottom: 12 },
-  rowIcon: { width: 54, height: 54, borderRadius: 16, alignItems: "center", justifyContent: "center" },
+  hero: { borderBottomLeftRadius: 30, borderBottomRightRadius: 30 },
+  avatar: { width: 100, height: 100, borderRadius: 50, borderWidth: 3, borderColor: "#fff" },
+  name: { color: "#fff", fontSize: 26, fontWeight: "900" },
+  scoreCard: { marginHorizontal: 20, marginTop: -28, padding: 18, borderRadius: 20, borderWidth: 1, flexDirection: "row", alignItems: "center", gap: 14 },
+  scoreRing: { width: 64, height: 64, borderRadius: 32, borderWidth: 3, alignItems: "center", justifyContent: "center" },
+  row: { flexDirection: "row", alignItems: "center", gap: 12, padding: 14, borderRadius: 16, borderWidth: 1, marginBottom: 10 },
+  rowIcon: { width: 44, height: 44, borderRadius: 14, alignItems: "center", justifyContent: "center" },
 });

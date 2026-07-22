@@ -81,14 +81,14 @@ export default function Discover() {
       <View style={{ paddingHorizontal: 20, paddingTop: 14 }}>
         <Text style={[styles.title, { color: colors.text }]}>Discover</Text>
         <Text style={{ color: colors.textMuted, marginTop: 6, fontSize: 16, lineHeight: 22 }}>
-          Find verified women travellers & local guides by city.
+          Find verified women travellers & local guides by city across India.
         </Text>
 
         <View style={[styles.searchBar, { backgroundColor: colors.surface, borderColor: colors.border }]}>
           <Feather name="search" size={18} color={colors.textMuted} />
           <TextInput
             testID="discover-search"
-            placeholder={`Search ${active === "women" ? "travellers" : "guides, cities, countries"}…`}
+            placeholder={`Search ${active === "women" ? "travellers" : "guides, cities"}…`}
             placeholderTextColor={colors.textMuted}
             value={search}
             onChangeText={setSearch}
@@ -101,63 +101,49 @@ export default function Discover() {
           ) : null}
         </View>
 
-        <View style={{ flexDirection: "row", marginTop: 14, marginBottom: 6 }}>
-          <Chip label="Travellers" active={active === "women"} onPress={() => setActive("women")} testID="tab-women" />
-          <Chip label="Local guides" active={active === "guides"} onPress={() => setActive("guides")} testID="tab-guides" />
+        {/* Tab switch buttons */}
+        <View style={{ flexDirection: "row", marginTop: 16, marginBottom: 12 }}>
+          <Chip label="Women Travellers" active={active === "women"} onPress={() => setActive("women")} testID="tab-women" />
+          <Chip label="Local Guides" active={active === "guides"} onPress={() => setActive("guides")} testID="tab-guides" />
         </View>
-      </View>
 
-      {active === "guides" && (
-        <View style={{ paddingHorizontal: 20, marginTop: 6 }}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <Chip
-              label="All cities"
-              active={!cityFilter}
-              onPress={() => setCityFilter(null)}
-              testID="city-all"
-            />
+        {/* City Filter Pills */}
+        {cities.length > 0 && (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 10 }}>
+            <Chip label="All Cities" active={!cityFilter} onPress={() => setCityFilter(null)} testID="city-all" />
             {cities.map((c) => (
               <Chip key={c} label={c} active={cityFilter === c} onPress={() => setCityFilter(c)} testID={`city-${c}`} />
             ))}
-            {cities.length === 0 && countries.length === 0 && (
-              <Text style={{ color: colors.textMuted, fontSize: 12, alignSelf: "center", marginLeft: 8 }}>
-                No guides registered yet — be the first ✨
-              </Text>
-            )}
           </ScrollView>
-        </View>
-      )}
+        )}
+      </View>
 
       {active === "women" ? (
         <FlatList
-          contentContainerStyle={{ padding: 20, paddingBottom: 140 }}
+          contentContainerStyle={{ padding: 20, paddingBottom: 160 }}
           data={filteredTrav}
           keyExtractor={(t) => t.id}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
           renderItem={({ item }) => (
-            <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              <TouchableOpacity
-                onPress={() => router.push({ pathname: "/profile/[id]", params: { id: item.id } })}
-                style={{ flexDirection: "row", alignItems: "center", gap: 12 }}
-                testID={`disc-traveller-${item.id}`}
-              >
+            <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]} testID={`disc-traveller-${item.id}`}>
+              <TouchableOpacity style={{ flexDirection: "row", gap: 12, alignItems: "center" }}>
                 <Image source={{ uri: item.avatar_url }} style={styles.avatar} />
                 <View style={{ flex: 1 }}>
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                    <Text style={{ fontWeight: "900", fontSize: 22, color: colors.text }}>{item.name}</Text>
-                    {item.verified && <VerifiedBadge size={11} />}
+                    <Text style={{ fontWeight: "900", fontSize: 20, color: colors.text }}>{item.name}</Text>
+                    {item.verified && <VerifiedBadge size={12} showLabel />}
                   </View>
                   <Text style={{ color: colors.textMuted, fontSize: 13 }}>
-                    {item.age} · {item.countries_visited} countries · {item.rating}
+                    {item.city || "India"} · {item.age || 25}y · ⭐ {item.rating || 5.0}
                   </Text>
                   {item.latest_trip && (
                     <Text style={{ color: colors.primary, fontSize: 12, marginTop: 2 }} numberOfLines={1}>
-                      {item.latest_trip.destination}, {item.latest_trip.country}
+                      📍 {item.latest_trip.destination}, {item.latest_trip.country}
                     </Text>
                   )}
                 </View>
               </TouchableOpacity>
-              {item.bio ? <Text style={{ color: colors.textMuted, fontSize: 17, marginTop: 16 }} numberOfLines={2}>{item.bio}</Text> : null}
+              {item.bio ? <Text style={{ color: colors.textMuted, fontSize: 14, marginTop: 12 }} numberOfLines={2}>{item.bio}</Text> : null}
               <View style={{ flexDirection: "row", gap: 8, marginTop: 12 }}>
                 <TouchableOpacity
                   testID={`request-${item.id}`}
@@ -199,16 +185,16 @@ export default function Discover() {
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
           ListHeaderComponent={
             <TouchableOpacity
-              onPress={() => router.push("/guide/register")}
+              onPress={() => router.push("/guide/signup")}
               testID="cta-become-guide"
               style={{ marginBottom: 14 }}
             >
               <LinearGradient colors={[colors.primary, colors.secondary]} style={styles.becomeCard}>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ color: "#fff", fontSize: 11, fontWeight: "700", letterSpacing: 1.5 }}>FOR WOMEN GUIDES</Text>
-                  <Text style={{ color: "#fff", fontSize: 18, fontWeight: "800", marginTop: 4 }}>Become a Local Guide</Text>
+                  <Text style={{ color: "#fff", fontSize: 11, fontWeight: "700", letterSpacing: 1.5 }}>FOR LOCAL WOMEN GUIDES</Text>
+                  <Text style={{ color: "#fff", fontSize: 18, fontWeight: "800", marginTop: 4 }}>Become a Certified Guide</Text>
                   <Text style={{ color: "rgba(255,255,255,0.9)", fontSize: 12, marginTop: 4 }}>
-                    Earn by helping solo women explore your city safely.
+                    Guide solo female travellers in your city safely.
                   </Text>
                 </View>
                 <View style={styles.becomeIcon}>
@@ -227,21 +213,35 @@ export default function Discover() {
                 <Image source={{ uri: item.avatar_url }} style={styles.avatar} />
                 <View style={{ flex: 1 }}>
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                    <Text style={{ fontWeight: "900", fontSize: 22, color: colors.text }}>{item.name}</Text>
-                    {item.verified && <VerifiedBadge size={11} />}
+                    <Text style={{ fontWeight: "900", fontSize: 20, color: colors.text }}>{item.name}</Text>
+                    {item.verified && <VerifiedBadge size={12} showLabel />}
                   </View>
                   <Text style={{ color: colors.textMuted, fontSize: 13 }}>
-                    {item.city}, {item.country} · {item.experience_years}y exp
+                    {item.city}, India · {item.experience_years || 1}y exp
                   </Text>
-                  <Text style={{ color: colors.primary, fontWeight: "700", marginTop: 4 }}>
-                    ${item.price_per_day}/day{item.reviews_count > 0 ? ` · ${item.rating} (${item.reviews_count})` : ""}
-                  </Text>
+                  <View style={{ flexDirection: "row", gap: 6, marginTop: 4, alignItems: "center", flexWrap: "wrap" }}>
+                    <Text style={{ color: colors.primary, fontWeight: "700" }}>
+                      ₹{item.price_per_day || 1500}/day {item.reviews_count > 0 ? `· ⭐ ${item.rating} (${item.reviews_count})` : ""}
+                    </Text>
+                    {item.positive_percent ? (
+                      <View style={{ backgroundColor: "rgba(52,211,153,0.15)", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 }}>
+                        <Text style={{ color: "#34D399", fontSize: 10, fontWeight: "800" }}>
+                          {item.positive_percent}% +ve
+                        </Text>
+                      </View>
+                    ) : null}
+                    <View style={{ backgroundColor: "rgba(139,92,246,0.15)", paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 }}>
+                      <Text style={{ color: "#8B5CF6", fontSize: 10, fontWeight: "800" }}>
+                        🛡️ {item.safety_score ?? 100}/100
+                      </Text>
+                    </View>
+                  </View>
                 </View>
                 <Feather name="chevron-right" size={20} color={colors.textMuted} />
               </View>
               <Text style={{ color: colors.textMuted, fontSize: 13, marginTop: 8 }} numberOfLines={2}>{item.bio}</Text>
               <View style={{ flexDirection: "row", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
-                {item.languages.slice(0, 3).map((l: string) => (
+                {item.languages?.slice(0, 3).map((l: string) => (
                   <View key={l} style={[styles.tag, { backgroundColor: colors.chipBg }]}>
                     <Text style={{ color: colors.text, fontSize: 11, fontWeight: "600" }}>{l}</Text>
                   </View>
@@ -258,7 +258,7 @@ export default function Discover() {
                 {cityFilter ? `No guides in ${cityFilter} yet` : "No guides yet"}
               </Text>
               <Text style={{ color: colors.textMuted, marginTop: 4, textAlign: "center", maxWidth: 280 }}>
-                Be the first to share your city — tap “Become a Local Guide” above.
+                Be the first to share your city — tap “Become a Certified Guide” above.
               </Text>
             </View>
           }
@@ -269,13 +269,13 @@ export default function Discover() {
 }
 
 const styles = StyleSheet.create({
-  title: { fontSize: 38, fontWeight: "900" },
-  searchBar: { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 16, borderRadius: 24, borderWidth: 1, marginTop: 20 },
-  card: { padding: 18, borderRadius: 24, borderWidth: 1, marginBottom: 16 },
-  avatar: { width: 76, height: 76, borderRadius: 999 },
-  actionBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 14, borderRadius: 999 },
+  title: { fontSize: 34, fontWeight: "900" },
+  searchBar: { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 14, borderRadius: 24, borderWidth: 1, marginTop: 16 },
+  card: { padding: 16, borderRadius: 20, borderWidth: 1, marginBottom: 14 },
+  avatar: { width: 64, height: 64, borderRadius: 32 },
+  actionBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, paddingVertical: 12, borderRadius: 999 },
   tag: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999 },
-  becomeCard: { flexDirection: "row", alignItems: "center", gap: 14, padding: 20, borderRadius: 24 },
-  becomeIcon: { width: 58, height: 58, borderRadius: 18, backgroundColor: "rgba(255,255,255,0.25)", alignItems: "center", justifyContent: "center" },
-  emptyIcon: { width: 64, height: 64, borderRadius: 999, alignItems: "center", justifyContent: "center" },
+  becomeCard: { flexDirection: "row", alignItems: "center", gap: 14, padding: 18, borderRadius: 20 },
+  becomeIcon: { width: 48, height: 48, borderRadius: 16, backgroundColor: "rgba(255,255,255,0.25)", alignItems: "center", justifyContent: "center" },
+  emptyIcon: { width: 64, height: 64, borderRadius: 32, alignItems: "center", justifyContent: "center" },
 });
