@@ -1,0 +1,24 @@
+==========================================================
+                     LOAD TEST REPORT
+==========================================================
+Target Endpoint:      http://127.0.0.1:8005/api/guides
+Concurrent Users:     100
+Total Time Elapsed:   60.99 seconds
+
+Total Requests:       29028
+Successful Requests:  29028 (100.0%)
+Failed Requests:      0 (0.0%)
+
+----------------------------------------------------------
+Requests per second (RPS)
+475.93 req/sec
+Meaning your API is handling about 475.9 requests every second.
+
+----------------------------------------------------------
+Response Time
+Average: 208.2ms
+Min:     25.9ms
+Max:     1572.4ms
+95th Percentile: 252.5ms
+99th Percentile: 284.4ms
+==========================================================

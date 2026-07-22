@@ -1,0 +1,16 @@
+{
+  "target_url": "http://127.0.0.1:8005/api/guides",
+  "concurrent_users": 100,
+  "actual_duration_sec": 60.99274015426636,
+  "total_requests": 29028,
+  "successful_requests": 29028,
+  "failed_requests": 0,
+  "rps": 475.9254941912875,
+  "response_time_ms": {
+    "average": 208.24406299779216,
+    "min": 25.949900000341586,
+    "max": 1572.3841999997603,
+    "p95": 252.45169999925565,
+    "p99": 284.3820999996751
+  }
+}

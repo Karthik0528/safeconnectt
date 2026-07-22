@@ -1,0 +1,24 @@
+==========================================================
+                     LOAD TEST REPORT
+==========================================================
+Target Endpoint:      http://127.0.0.1:8005/api/
+Concurrent Users:     100
+Total Time Elapsed:   61.20 seconds
+
+Total Requests:       31839
+Successful Requests:  31839 (100.0%)
+Failed Requests:      0 (0.0%)
+
+----------------------------------------------------------
+Requests per second (RPS)
+520.28 req/sec
+Meaning your API is handling about 520.3 requests every second.
+
+----------------------------------------------------------
+Response Time
+Average: 190.2ms
+Min:     16.2ms
+Max:     626.8ms
+95th Percentile: 315.2ms
+99th Percentile: 388.1ms
+==========================================================

@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "extra": {
+      "eas": {
+        "projectId": "28792b7a-7dd6-4ce7-9b2a-fa354c092807"
+      }
+    },
+    "android": {
+      "package": "com.karthikk28.safeconnect"
+    }
+  }
+}

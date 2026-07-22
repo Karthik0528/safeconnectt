@@ -1,0 +1,16 @@
+{
+  "target_url": "http://127.0.0.1:8000/api/",
+  "concurrent_users": 100,
+  "actual_duration_sec": 60.92229723930359,
+  "total_requests": 33361,
+  "successful_requests": 33361,
+  "failed_requests": 0,
+  "rps": 547.5991798037022,
+  "response_time_ms": {
+    "average": 181.1495343095236,
+    "min": 14.231900000027053,
+    "max": 582.1823999999651,
+    "p95": 303.6620999999968,
+    "p99": 370.690599999989
+  }
+}

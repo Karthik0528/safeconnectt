@@ -1,4 +1,4 @@
-name: CI Test Execution
+name: saFeConnect CI — E2E, Load, & Security Tests
 
 on:
   push:
@@ -9,8 +9,10 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     steps:
+    # ── Setup ────────────────────────────────────────────────
     - name: Checkout Code
       uses: actions/checkout@v4
 
@@ -41,15 +43,16 @@ jobs:
         python -m pip install -r backend/requirements.txt
         python -m pip install pytest requests openpyxl selenium webdriver-manager pytest-mock
 
-    - name: Start local FastAPI backend server
-      run: |
-        cd backend
-        python -m uvicorn server:app --host 127.0.0.1 --port 8000 &
-
     - name: Install Frontend Node Dependencies
       run: |
         cd frontend
         npm install --legacy-peer-deps
+
+    # ── Build & Serve ────────────────────────────────────────
+    - name: Start local FastAPI backend server
+      run: |
+        cd backend
+        python -m uvicorn server:app --host 127.0.0.1 --port 8000 &
 
     - name: Export/Build Expo Web static assets
       run: |
@@ -63,27 +66,47 @@ jobs:
     - name: Wait for background servers to spin up
       run: sleep 10
 
+    # ── E2E & Regression Tests ───────────────────────────────
     - name: Run E2E & Pytest Test Suite
       run: |
         python run_suite.py
 
+    # ── Load Testing ─────────────────────────────────────────
     - name: Run Baseline Load Test (Guides Endpoint)
       run: |
         python tests/load_test.py --url http://127.0.0.1:8000/api/guides --users 100 --duration 60 --name guides
 
-    - name: Run Baseline Load Test (Health/Routing Endpoint)
+    - name: Run Baseline Load Test (Health Endpoint)
       run: |
         python tests/load_test.py --url http://127.0.0.1:8000/api/ --users 100 --duration 60 --name health
 
+    # ── Security Vulnerability Scan ──────────────────────────
+    - name: Run Static Security Audit
+      run: |
+        python tests/security_scan.py
+
+    # ── Report Generation ────────────────────────────────────
     - name: Generate Unified Load Test Excel Report
       run: |
         python tests/generate_excel.py
 
-    - name: Upload Excel Test Report Artifacts
+    - name: Generate GitHub Actions Job Summary
+      if: always()
+      run: |
+        python tests/generate_github_summary.py
+
+    # ── Artifact Upload ──────────────────────────────────────
+    - name: Upload Test Reports
       uses: actions/upload-artifact@v4
       if: always()
       with:
-        name: E2E-and-Load-Test-Reports
+        name: saFeConnect-Test-Reports
         path: |
           test_reports/E2E_Test_Report_saFeConnect.xlsx
           test_reports/Load_Test_Report_saFeConnect.xlsx
+          test_reports/Security_Vulnerabilities_saFeConnect.xlsx
+          test_reports/github_step_summary.md
+          test_reports/security_executive_summary.md
+          test_reports/security_detailed_findings.md
+          test_reports/load_test_report_guides.json
+          test_reports/load_test_report_health.json
