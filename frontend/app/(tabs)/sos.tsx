@@ -11,6 +11,8 @@ import {
   Modal,
   TextInput,
   Linking,
+  Vibration,
+  Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
@@ -32,6 +34,12 @@ export default function SOS() {
   const [showFakeCall, setShowFakeCall] = useState(false);
   const [fakeCallStatus, setFakeCallStatus] = useState<"ringing" | "connected">("ringing");
   const [callTimer, setCallTimer] = useState(0);
+  const soundRef = useRef<any>(null);
+
+  // Dynamic caller resolution based on registered emergency contacts
+  const activeCallerName = contacts.length > 0 ? contacts[0].name : "Mom ❤️";
+  const activeCallerPhone = contacts.length > 0 ? contacts[0].phone : "+1 (555) 019-2834";
+  const activeCallerRelation = contacts.length > 0 ? (contacts[0].relation || "Emergency Contact") : "Family";
 
   useEffect(() => {
     let interval: any;
@@ -45,17 +53,65 @@ export default function SOS() {
     return () => clearInterval(interval);
   }, [showFakeCall, fakeCallStatus]);
 
+  const startRingtone = () => {
+    try {
+      Vibration.vibrate([500, 1000, 500, 1000], true);
+    } catch (e) {}
+
+    if (Platform.OS === "web" && typeof window !== "undefined") {
+      try {
+        const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+        if (AudioCtx) {
+          const ctx = new AudioCtx();
+          const osc1 = ctx.createOscillator();
+          const osc2 = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc1.type = "sine";
+          osc2.type = "sine";
+          osc1.frequency.value = 440;
+          osc2.frequency.value = 480;
+          gain.gain.value = 0.12;
+          osc1.connect(gain);
+          osc2.connect(gain);
+          gain.connect(ctx.destination);
+          osc1.start();
+          osc2.start();
+          soundRef.current = { ctx, osc1, osc2 };
+        }
+      } catch (e) {
+        console.log("Web audio ringtone notice:", e);
+      }
+    }
+  };
+
+  const stopRingtone = () => {
+    try {
+      Vibration.cancel();
+    } catch (e) {}
+    if (soundRef.current) {
+      try {
+        soundRef.current.osc1.stop();
+        soundRef.current.osc2.stop();
+        soundRef.current.ctx.close();
+      } catch (e) {}
+      soundRef.current = null;
+    }
+  };
+
   const triggerFakeCall = () => {
     setFakeCallStatus("ringing");
     setCallTimer(0);
     setShowFakeCall(true);
+    startRingtone();
   };
 
   const answerFakeCall = () => {
+    stopRingtone();
     setFakeCallStatus("connected");
   };
 
   const endFakeCall = () => {
+    stopRingtone();
     setShowFakeCall(false);
     setFakeCallStatus("ringing");
     setCallTimer(0);
@@ -365,10 +421,10 @@ await Linking.openURL(whatsappURL);
               {fakeCallStatus === "ringing" ? "INCOMING CALL" : "CALL IN PROGRESS"}
             </Text>
             <Text style={{ color: "#FFFFFF", fontSize: 36, fontWeight: "900", marginTop: 12 }}>
-              Mom ❤️
+              {activeCallerName}
             </Text>
             <Text style={{ color: "#CBD5E1", fontSize: 16, marginTop: 4 }}>
-              {fakeCallStatus === "ringing" ? "Mobile +1 (555) 019-2834" : formatTimer(callTimer)}
+              {fakeCallStatus === "ringing" ? `${activeCallerRelation} · ${activeCallerPhone}` : formatTimer(callTimer)}
             </Text>
           </SafeAreaView>
 
@@ -381,10 +437,10 @@ await Linking.openURL(whatsappURL);
             {fakeCallStatus === "connected" && (
               <View style={{ marginTop: 28, backgroundColor: "rgba(56, 189, 248, 0.15)", paddingHorizontal: 20, paddingVertical: 12, borderRadius: 16, borderWidth: 1, borderColor: "rgba(56, 189, 248, 0.3)", maxWidth: 300 }}>
                 <Text style={{ color: "#38BDF8", fontSize: 14, fontWeight: "700", textAlign: "center" }}>
-                  🔊 Simulated Audio Script:
+                  🔊 Simulated Audio Script ({activeCallerName}):
                 </Text>
                 <Text style={{ color: "#E2E8F0", fontSize: 14, textAlign: "center", marginTop: 4, fontStyle: "italic" }}>
-                  "Hey! I'm right around the corner in the blue car. Stay where you are, pulling up in 1 minute!"
+                  "Hey! I'm right around the corner. Stay where you are, pulling up in 1 minute!"
                 </Text>
               </View>
             )}

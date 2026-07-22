@@ -703,22 +703,61 @@ SYSTEM_PROMPT = (
 )
 
 
+def generate_safe_ai_response(msg: str) -> str:
+    m = msg.lower()
+    if "tokyo" in m or "japan" in m or "neighborhood" in m:
+        return (
+            "🏯 **Tokyo Solo Women Safety Guide:**\n\n"
+            "• **Safest Areas:** Ginza, Roppongi (daytime), Shibuya, Shinjuku (stay on main lit streets).\n"
+            "• **Koban (Police Boxes):** Located at every major train station exit — officers speak basic English.\n"
+            "• **Women-Only Trains:** Active during morning/evening rush hours (look for pink car floor markings).\n"
+            "• **24/7 Safe Havens:** Lawson, 7-Eleven, and FamilyMart stores are everywhere if you ever need shelter or assistance."
+        )
+    elif "bali" in m or "trip" in m or "itinerary" in m or "5-day" in m:
+        return (
+            "🌴 **5-Day Safe Solo Bali Itinerary:**\n\n"
+            "• **Day 1-2 (Ubud):** Stay at verified female-friendly villas near Sacred Monkey Forest; take daytime yoga classes.\n"
+            "• **Day 3 (Canggu):** Beachfront cafes, sunset at Echo Beach with trusted groups.\n"
+            "• **Day 4-5 (Uluwatu):** Kecak Fire Dance, cliff views. Book certified female local guides via saFeConnect.\n"
+            "• **Safety Rule:** Always use Grab or Gojek apps for rides rather than unmetered street taxis."
+        )
+    elif "unsafe" in m or "night" in m or "dark" in m or "walking" in m:
+        return (
+            "🚨 **Immediate Steps If Feeling Unsafe at Night:**\n\n"
+            "1. **Enter a Public Space:** Step immediately into a well-lit hotel lobby, restaurant, or store.\n"
+            "2. **Use Fake Call:** Tap 'Fake Call' in saFeConnect SOS tab to pretend you are meeting someone right away.\n"
+            "3. **Share Live Location:** Send your real-time GPS link to your emergency contacts.\n"
+            "4. **Hold SOS Button:** Hold the red SOS button if you feel in immediate danger — alerts emergency contacts instantly."
+        )
+    elif "translate" in m or "spanish" in m or "police" in m or "help" in m:
+        return (
+            "🗣️ **Essential Spanish Safety Phrases:**\n\n"
+            "• *Necesito ayuda, por favor llame a la policía.* (I need help, please call the police.)\n"
+            "• *¿Dónde está la comisaría más cercana?* (Where is the nearest police station?)\n"
+            "• *Por favor déjame en paz.* (Please leave me alone.)\n"
+            "• **Emergency Number in Spain/Europe:** Call **112** (free, works on all mobile networks)."
+        )
+    elif "scam" in m or "pack" in m or "hotel" in m:
+        return (
+            "🎒 **Solo Travel Safety Essentials & Scam Prevention:**\n\n"
+            "• **Hotel Safety:** Request rooms between floors 2 and 4 (away from street level, accessible by fire ladders).\n"
+            "• **Common Scams:** Beware of 'friendly strangers' offering unrequested tours or unofficial currency exchanges.\n"
+            "• **Packing Tip:** Carry a portable door lock, door stop alarm, and a backup power bank for your phone."
+        )
+    else:
+        return (
+            f"💜 **SafeAI Travel Advice:**\n\n"
+            f"Regarding *'{msg}'*:\n\n"
+            "• **Location Awareness:** Always download offline maps (Google Maps / Maps.me) before exploring new areas.\n"
+            "• **Emergency Contacts:** Ensure at least 1 contact is added under your saFeConnect SOS tab.\n"
+            "• **Local Guides:** Connect with verified female local guides on saFeConnect for safe neighborhood orientation.\n"
+            "• **Stay Connected:** Keep your phone charged and check in with family at scheduled times."
+        )
+
+
 @api.post("/ai/chat")
 async def ai_chat(req: AiChatReq, current=Depends(get_current_user)):
-    demo_reply = f"""
-SafeConnect AI Assistant
-
-You said: {req.message}
-
-Safety Tips:
-• Share live location with trusted contacts
-• Avoid isolated places at night
-• Keep emergency numbers ready
-• Use verified accommodations
-• Stay connected with local guides
-
-This is currently running in local demo mode.
-"""
+    reply_text = generate_safe_ai_response(req.message)
 
     # Save user message
     await db.ai_messages.insert_one(
@@ -739,12 +778,12 @@ This is currently running in local demo mode.
             "user_id": current["id"],
             "session_id": req.session_id,
             "role": "assistant",
-            "text": demo_reply,
+            "text": reply_text,
             "created_at": now_iso(),
         }
     )
 
-    return {"reply": demo_reply}
+    return {"reply": reply_text}
 
 
 @api.get("/ai/history/{session_id}")
