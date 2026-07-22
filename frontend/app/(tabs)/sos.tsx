@@ -29,6 +29,43 @@ export default function SOS() {
   const [newPhone, setNewPhone] = useState("");
   const [newRel, setNewRel] = useState("Family");
   const [busy, setBusy] = useState(false);
+  const [showFakeCall, setShowFakeCall] = useState(false);
+  const [fakeCallStatus, setFakeCallStatus] = useState<"ringing" | "connected">("ringing");
+  const [callTimer, setCallTimer] = useState(0);
+
+  useEffect(() => {
+    let interval: any;
+    if (showFakeCall && fakeCallStatus === "connected") {
+      interval = setInterval(() => {
+        setCallTimer((prev) => prev + 1);
+      }, 1000);
+    } else {
+      setCallTimer(0);
+    }
+    return () => clearInterval(interval);
+  }, [showFakeCall, fakeCallStatus]);
+
+  const triggerFakeCall = () => {
+    setFakeCallStatus("ringing");
+    setCallTimer(0);
+    setShowFakeCall(true);
+  };
+
+  const answerFakeCall = () => {
+    setFakeCallStatus("connected");
+  };
+
+  const endFakeCall = () => {
+    setShowFakeCall(false);
+    setFakeCallStatus("ringing");
+    setCallTimer(0);
+  };
+
+  const formatTimer = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+  };
 
   const pulse = useRef(new Animated.Value(0)).current;
 
@@ -218,7 +255,7 @@ await Linking.openURL(whatsappURL);
         )}
 
         <View style={styles.actionsRow}>
-          <ActionBtn icon="phone-call" label="Fake call" onPress={fakeCall} testID="fake-call" colors={colors} />
+          <ActionBtn icon="phone-call" label="Fake call" onPress={triggerFakeCall} testID="fake-call" colors={colors} />
           <ActionBtn icon="map-pin" label="Share location" onPress={trigger} testID="share-location" colors={colors} />
         </View>
 
@@ -317,6 +354,75 @@ await Linking.openURL(whatsappURL);
             </View>
           </View>
         </View>
+      </Modal>
+
+      {/* Simulated Fake Incoming Call Modal */}
+      <Modal visible={showFakeCall} animationType="fade" transparent={false} onRequestClose={endFakeCall}>
+        <LinearGradient colors={["#0F172A", "#1E293B", "#0F172A"]} style={{ flex: 1, padding: 24, justifyContent: "space-between", alignItems: "center" }}>
+          {/* Top Info Header */}
+          <SafeAreaView style={{ alignItems: "center", paddingTop: 40 }}>
+            <Text style={{ color: "#94A3B8", fontSize: 15, fontWeight: "600", letterSpacing: 2, textTransform: "uppercase" }}>
+              {fakeCallStatus === "ringing" ? "INCOMING CALL" : "CALL IN PROGRESS"}
+            </Text>
+            <Text style={{ color: "#FFFFFF", fontSize: 36, fontWeight: "900", marginTop: 12 }}>
+              Mom ❤️
+            </Text>
+            <Text style={{ color: "#CBD5E1", fontSize: 16, marginTop: 4 }}>
+              {fakeCallStatus === "ringing" ? "Mobile +1 (555) 019-2834" : formatTimer(callTimer)}
+            </Text>
+          </SafeAreaView>
+
+          {/* Caller Avatar / Wave visualizer */}
+          <View style={{ alignItems: "center", justifyContent: "center" }}>
+            <View style={{ width: 140, height: 140, borderRadius: 70, backgroundColor: "#1E293B", borderWidth: 4, borderColor: "#38BDF8", alignItems: "center", justifyContent: "center", shadowColor: "#38BDF8", shadowOpacity: 0.5, shadowRadius: 20 }}>
+              <Feather name="user" size={64} color="#38BDF8" />
+            </View>
+
+            {fakeCallStatus === "connected" && (
+              <View style={{ marginTop: 28, backgroundColor: "rgba(56, 189, 248, 0.15)", paddingHorizontal: 20, paddingVertical: 12, borderRadius: 16, borderWidth: 1, borderColor: "rgba(56, 189, 248, 0.3)", maxWidth: 300 }}>
+                <Text style={{ color: "#38BDF8", fontSize: 14, fontWeight: "700", textAlign: "center" }}>
+                  🔊 Simulated Audio Script:
+                </Text>
+                <Text style={{ color: "#E2E8F0", fontSize: 14, textAlign: "center", marginTop: 4, fontStyle: "italic" }}>
+                  "Hey! I'm right around the corner in the blue car. Stay where you are, pulling up in 1 minute!"
+                </Text>
+              </View>
+            )}
+          </View>
+
+          {/* Action Control Buttons */}
+          <SafeAreaView style={{ width: "100%", paddingBottom: 30 }}>
+            {fakeCallStatus === "ringing" ? (
+              <View style={{ flexDirection: "row", justifyContent: "space-around", alignItems: "center", width: "100%" }}>
+                {/* Decline Button */}
+                <TouchableOpacity onPress={endFakeCall} style={{ alignItems: "center" }} testID="fake-call-decline">
+                  <View style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: "#EF4444", alignItems: "center", justifyContent: "center", shadowColor: "#EF4444", shadowOpacity: 0.5, shadowRadius: 10 }}>
+                    <Feather name="phone-off" size={32} color="#FFFFFF" />
+                  </View>
+                  <Text style={{ color: "#94A3B8", marginTop: 8, fontWeight: "600", fontSize: 14 }}>Decline</Text>
+                </TouchableOpacity>
+
+                {/* Accept Button */}
+                <TouchableOpacity onPress={answerFakeCall} style={{ alignItems: "center" }} testID="fake-call-accept">
+                  <View style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: "#22C55E", alignItems: "center", justifyContent: "center", shadowColor: "#22C55E", shadowOpacity: 0.5, shadowRadius: 10 }}>
+                    <Feather name="phone-call" size={32} color="#FFFFFF" />
+                  </View>
+                  <Text style={{ color: "#94A3B8", marginTop: 8, fontWeight: "600", fontSize: 14 }}>Answer</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <View style={{ alignItems: "center", width: "100%" }}>
+                {/* End Call Button */}
+                <TouchableOpacity onPress={endFakeCall} style={{ alignItems: "center" }} testID="fake-call-end">
+                  <View style={{ width: 76, height: 76, borderRadius: 38, backgroundColor: "#EF4444", alignItems: "center", justifyContent: "center", shadowColor: "#EF4444", shadowOpacity: 0.6, shadowRadius: 12 }}>
+                    <Feather name="phone-off" size={36} color="#FFFFFF" />
+                  </View>
+                  <Text style={{ color: "#94A3B8", marginTop: 10, fontWeight: "700", fontSize: 15 }}>End Call</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </SafeAreaView>
+        </LinearGradient>
       </Modal>
     </SafeAreaView>
   );

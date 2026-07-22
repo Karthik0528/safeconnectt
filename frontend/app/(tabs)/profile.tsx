@@ -21,39 +21,30 @@ export default function Profile() {
     Appearance.setColorScheme(val ? "dark" : "light");
   };
 
-  const handleLogout = () =>
-  Alert.alert(
-    "Sign out?",
-    "You'll need your password to sign back in.",
-    [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Sign out",
-        style: "destructive",
-        onPress: async () => {
-          try {
+  const doLogout = async () => {
+    try {
+      console.log("Executing logout...");
+      await logout();
+      console.log("Logout successful, navigating to login");
+      router.replace("/auth/login");
+    } catch (error) {
+      console.log("Logout error:", error);
+      Alert.alert("Logout Failed", String(error));
+    }
+  };
 
-            console.log("BUTTON PRESSED");
-
-            await logout();
-
-            console.log("LOGOUT SUCCESS");
-
-            router.replace("/auth/login");
-
-          } catch (error) {
-
-            console.log("LOGOUT ERROR:", error);
-
-            Alert.alert(
-              "Logout Failed",
-              JSON.stringify(error)
-            );
-          }
-        },
-      },
-    ]
-  );
+  const handleLogout = () => {
+    if (typeof window !== "undefined" && window.confirm) {
+      if (window.confirm("Sign out?\n\nYou'll need your password to sign back in.")) {
+        doLogout();
+      }
+    } else {
+      Alert.alert("Sign out?", "You'll need your password to sign back in.", [
+        { text: "Cancel", style: "cancel" },
+        { text: "Sign out", style: "destructive", onPress: doLogout },
+      ]);
+    }
+  };
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={["top"]}>
