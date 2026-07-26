@@ -102,7 +102,7 @@ export default function Home() {
     return "Good evening";
   })();
 
-  const firstName = user?.name.split(" ")[0] || "Traveller";
+  const displayName = user?.nickname || user?.name?.split(" ")[0] || "Traveller";
   const isGuideUser = user?.role === "guide" || user?.is_guide;
 
   return (
@@ -127,9 +127,10 @@ export default function Home() {
               <View>
                 <Text style={styles.greet}>{greeting},</Text>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                  <Text style={styles.name}>{firstName}</Text>
+                  <Text style={styles.name}>{displayName}</Text>
                   {user?.verified && <VerifiedBadge size={14} />}
                 </View>
+
                 {isGuideUser ? (
                   <Text style={{ color: "#FBBF24", fontWeight: "800", fontSize: 11, marginTop: 2 }}>
                     ● CERTIFIED FEMALE LOCAL GUIDE

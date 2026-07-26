@@ -18,6 +18,10 @@ from dotenv import load_dotenv
 from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel, Field, EmailStr
 
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / ".env")
 
@@ -28,11 +32,197 @@ EMERGENT_LLM_KEY = "demo_key"
 JWT_ALG = "HS256"
 JWT_EXP_DAYS = 30
 
+SMTP_HOST = os.getenv("SMTP_HOST", "smtp.gmail.com")
+SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
+SMTP_USER = os.getenv("SMTP_USER") or os.getenv("ADMIN_EMAIL", "karthikmateti123@gmail.com")
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD") or os.getenv("ADMIN_PASSWORD", "")
+SMTP_FROM = os.getenv("SMTP_FROM", f"saFeConnect Verification <{SMTP_USER}>")
+
+def send_email_otp_sync(to_email: str, otp_code: str):
+    """Send real-time verification OTP email via SMTP."""
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = f"🔑 {otp_code} is your saFeConnect Verification Code"
+    msg["From"] = SMTP_FROM
+    msg["To"] = to_email
+
+    text_body = f"Welcome to saFeConnect!\n\nYour 6-digit verification code is: {otp_code}\n\nThis code will expire in 10 minutes."
+
+    html_body = f"""<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <style>
+        body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #0F172A; color: #F8FAFC; margin: 0; padding: 20px; }}
+        .container {{ max-width: 500px; margin: 0 auto; background: #1E293B; border-radius: 16px; padding: 30px; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 10px 25px rgba(0,0,0,0.5); }}
+        .header {{ text-align: center; margin-bottom: 24px; }}
+        .logo-badge {{ display: inline-block; background: linear-gradient(135deg, #EC4899, #8B5CF6); color: white; font-weight: 900; font-size: 20px; padding: 8px 18px; border-radius: 12px; margin-bottom: 12px; }}
+        .title {{ font-size: 22px; font-weight: 800; color: #FFFFFF; margin: 0 0 6px 0; }}
+        .subtitle {{ font-size: 14px; color: #94A3B8; margin: 0; }}
+        .otp-box {{ background: linear-gradient(135deg, rgba(236,72,153,0.15), rgba(139,92,246,0.15)); border: 2px dashed #EC4899; border-radius: 12px; padding: 20px; text-align: center; margin: 24px 0; }}
+        .otp-code {{ font-size: 36px; font-weight: 900; letter-spacing: 8px; color: #F43F5E; font-family: monospace; text-shadow: 0 0 10px rgba(244,63,94,0.3); }}
+        .otp-label {{ font-size: 12px; text-transform: uppercase; color: #94A3B8; letter-spacing: 1.5px; margin-top: 6px; }}
+        .footer {{ font-size: 12px; color: #64748B; text-align: center; margin-top: 24px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 16px; }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo-badge">saFeConnect 🛡️</div>
+            <h1 class="title">Email Verification Code</h1>
+            <p class="subtitle">Solo Female Travel & Safety Network India</p>
+        </div>
+        <p style="font-size: 15px; color: #CBD5E1; line-height: 1.6;">Hello,</p>
+        <p style="font-size: 14px; color: #94A3B8; line-height: 1.6;">Use the following 6-digit verification code to complete your registration on saFeConnect:</p>
+        <div class="otp-box">
+            <div class="otp-code">{otp_code}</div>
+            <div class="otp-label">Valid for 10 minutes</div>
+        </div>
+        <p style="font-size: 13px; color: #94A3B8;">If you did not request this verification code, please ignore this email.</p>
+        <div class="footer">
+            &copy; saFeConnect India. Empowering Women Travellers.
+        </div>
+    </div>
+</body>
+</html>"""
+
+    msg.attach(MIMEText(text_body, "plain"))
+    msg.attach(MIMEText(html_body, "html"))
+
+    print(f"\n=======================================================")
+    print(f"  [saFeConnect OTP Dispatch] Email: {to_email} | OTP: {otp_code}")
+    print(f"=======================================================\n")
+
+    if not SMTP_USER or not SMTP_PASSWORD:
+        logging.warning("SMTP credentials missing in .env (SMTP_PASSWORD empty). OTP is %s for %s", otp_code, to_email)
+        return False
+
+    try:
+        if SMTP_PORT == 465:
+            server = smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, timeout=10)
+        else:
+            server = smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=10)
+            server.starttls()
+        server.login(SMTP_USER, SMTP_PASSWORD)
+        server.sendmail(SMTP_USER, [to_email], msg.as_string())
+        server.quit()
+        logging.info("Successfully sent OTP email to %s via SMTP (%s)", to_email, SMTP_HOST)
+        return True
+    except Exception as e:
+        logging.error("Failed to send OTP email to %s: %s", to_email, e)
+        return False
+
+async def send_email_otp_async(to_email: str, otp_code: str):
+    loop = asyncio.get_running_loop()
+    return await loop.run_in_executor(None, send_email_otp_sync, to_email, otp_code)
+
+from fastapi.responses import HTMLResponse
+
 client = AsyncIOMotorClient(MONGO_URL)
 db = client[DB_NAME]
 
 app = FastAPI(title="SafeConnect API")
 api = APIRouter(prefix="/api")
+
+@app.get("/auth/google-callback", response_class=HTMLResponse)
+@app.get("/auth/google-callback/", response_class=HTMLResponse)
+async def google_callback_html():
+    html_content = """<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google Sign-In - saFeConnect</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #0F172A;
+            color: #FFFFFF;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            padding: 20px;
+            text-align: center;
+        }
+        .card {
+            background: #1E293B;
+            border: 1px solid #334155;
+            padding: 30px;
+            border-radius: 20px;
+            max-width: 400px;
+            width: 100%;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+        }
+        .spinner {
+            border: 4px solid rgba(255,255,255,0.1);
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border-left-color: #EC4899;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .btn {
+            background: linear-gradient(135deg, #EC4899, #8B5CF6);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-weight: bold;
+            font-size: 16px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            margin-top: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2 style="color: #EC4899;">saFeConnect</h2>
+        <div class="spinner" id="spinner"></div>
+        <h3 id="statusText">Completing Google Authentication...</h3>
+        <p id="subText" style="color: #94A3B8; font-size: 14px;">Please wait while we log you in...</p>
+        <div id="actionArea" style="display: none;">
+            <a id="deepLinkBtn" class="btn" href="#">Return to saFeConnect App</a>
+        </div>
+    </div>
+
+    <script>
+        try {
+            const hash = window.location.hash;
+            if (window.opener) {
+                window.opener.postMessage({ type: 'GOOGLE_AUTH_CALLBACK', hash: hash }, '*');
+                setTimeout(() => { try { window.close(); } catch(e){} }, 300);
+            }
+            const params = new URLSearchParams(hash.replace('#', '?'));
+            const idToken = params.get('id_token') || params.get('access_token');
+            
+            if (idToken) {
+                document.getElementById('statusText').innerText = "Authentication Successful!";
+                document.getElementById('subText').innerText = "You can close this window now or return to app.";
+                
+                const deepLink = "safeconnect://auth/google-callback" + hash;
+                document.getElementById('deepLinkBtn').href = deepLink;
+                document.getElementById('actionArea').style.display = "block";
+                
+                setTimeout(() => {
+                    window.location.href = deepLink;
+                }, 500);
+            } else {
+                document.getElementById('statusText').innerText = "Google Sign-In Received";
+                document.getElementById('subText').innerText = "Closing window...";
+            }
+        } catch(e) {
+            console.error(e);
+        }
+    </script>
+</body>
+</html>"""
+    return HTMLResponse(content=html_content)
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger("safeconnect")
@@ -71,7 +261,10 @@ ws_manager = ConnectionManager()
 
 
 @app.websocket("/api/ws/{client_id}")
+@app.websocket("/ws/{client_id}")
+@api.websocket("/ws/{client_id}")
 async def websocket_endpoint(websocket: WebSocket, client_id: str):
+
     await ws_manager.connect(websocket)
     try:
         while True:
@@ -103,7 +296,9 @@ class GoogleAuthReq(BaseModel):
 
 class UserSignupReq(BaseModel):
     name: str
+    nickname: Optional[str] = None
     username: Optional[str] = None
+
     email: EmailStr
     password: str
     phone: str
@@ -313,7 +508,9 @@ def public_user(u: dict) -> dict:
     return {
         "id": u["id"],
         "name": u.get("name", ""),
+        "nickname": u.get("nickname") or u.get("name", ""),
         "username": u.get("username", ""),
+
         "email": u.get("email", ""),
         "role": u.get("role", "user"),
         "gender": u.get("gender", "Female"),
@@ -361,23 +558,46 @@ async def root():
 # ------------------------- Routes: Auth & OTP -------------------------
 @api.post("/auth/send-otp")
 async def send_otp(req: SendOtpReq):
+    email = req.email.lower().strip()
     otp = str(random.randint(100000, 999999))
     expires = (datetime.now(timezone.utc) + timedelta(minutes=10)).isoformat()
     await db.otps.update_one(
-        {"email": req.email.lower()},
+        {"email": email},
         {"$set": {"otp": otp, "expires_at": expires, "verified": False}},
         upsert=True,
     )
-    logger.info("Generated OTP %s for email %s", otp, req.email)
-    return {"ok": True, "message": f"Verification OTP sent to {req.email}", "otp": otp}
+    logger.info("Generated OTP %s for email %s", otp, email)
+
+    # Trigger real email dispatch asynchronously
+    asyncio.create_task(send_email_otp_async(email, otp))
+
+    return {"ok": True, "message": f"Verification OTP sent to {email}. Please check your email inbox."}
 
 
 @api.post("/auth/verify-otp")
 async def verify_otp(req: VerifyOtpReq):
-    rec = await db.otps.find_one({"email": req.email.lower()})
-    if not rec or rec.get("otp") != req.otp.strip():
-        raise HTTPException(400, "Invalid verification OTP code")
-    await db.otps.update_one({"email": req.email.lower()}, {"$set": {"verified": True}})
+    email = req.email.lower().strip()
+    provided_otp = req.otp.strip()
+
+    rec = await db.otps.find_one({"email": email})
+    if not rec:
+        raise HTTPException(400, "No OTP request found for this email address. Please click 'Send Verification OTP' first.")
+
+    # Expiration check
+    exp_str = rec.get("expires_at")
+    if exp_str:
+        try:
+            exp_time = datetime.fromisoformat(exp_str)
+            if datetime.now(timezone.utc) > exp_time:
+                raise HTTPException(400, "OTP code has expired. Please request a new OTP code.")
+        except Exception:
+            pass
+
+    # Strict Real OTP verification matching
+    if rec.get("otp") != provided_otp:
+        raise HTTPException(400, "Invalid verification OTP code. Please check your email inbox for the correct 6-digit code.")
+
+    await db.otps.update_one({"email": email}, {"$set": {"verified": True}}, upsert=True)
     return {"ok": True, "message": "Email verified successfully!"}
 
 
@@ -414,17 +634,19 @@ async def check_username_available(username: str):
 
 @api.post("/auth/google")
 async def google_auth(req: GoogleAuthReq):
-    existing = await db.users.find_one({"email": req.email.lower()})
+    email = req.email.lower().strip()
+    existing = await db.users.find_one({"email": email})
+    
     if existing and existing.get("onboarding_completed"):
         token = make_token(existing["id"])
         return {"token": token, "user": public_user(existing), "onboarding_required": False}
-    
-    # Needs onboarding details (username, password, location, ID proof, checkboxes)
+
+    # Redirect to Google Onboarding Signup Details Page
     return {
         "onboarding_required": True,
-        "email": req.email.lower(),
-        "name": req.name,
-        "avatar_url": req.avatar_url,
+        "email": email,
+        "name": req.name or email.split("@")[0],
+        "avatar_url": req.avatar_url or "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80",
         "role": req.role or "user",
     }
 
@@ -493,11 +715,19 @@ async def complete_google_onboarding(req: GoogleOnboardingReq):
     return {"token": token, "user": public_user(user_data)}
 
 
+def validate_gmail_email(email_str: str) -> str:
+    clean = email_str.strip().lower()
+    if not clean.endswith("@gmail.com") or len(clean) <= 10:
+        raise HTTPException(400, "Registration rejected: Only official @gmail.com email addresses are allowed.")
+    return clean
+
+
 @api.post("/auth/signup")
 async def signup(req: UserSignupReq):
-    existing = await db.users.find_one({"email": req.email.lower()})
+    clean_email = validate_gmail_email(req.email)
+    existing = await db.users.find_one({"email": clean_email})
     if existing:
-        raise HTTPException(400, "Email already registered.")
+        raise HTTPException(400, f"Account creation rejected: An account with '{clean_email}' already exists. Please login instead.")
         
     if req.username:
         clean_uname = req.username.strip().lower()
@@ -514,8 +744,9 @@ async def signup(req: UserSignupReq):
         "id": user_id,
         "role": "user",
         "name": req.name,
+        "nickname": req.nickname or req.name,
         "username": req.username.strip().lower() if req.username else req.name.lower().replace(" ", "_"),
-        "email": req.email.lower(),
+        "email": clean_email,
         "password": hash_pw(req.password),
         "phone": req.phone,
         "gender": req.gender or "Female",
@@ -551,9 +782,10 @@ async def signup(req: UserSignupReq):
 
 @api.post("/auth/guide-signup")
 async def guide_signup(req: GuideSignupReq):
-    existing = await db.users.find_one({"email": req.email.lower()})
+    clean_email = validate_gmail_email(req.email)
+    existing = await db.users.find_one({"email": clean_email})
     if existing:
-        raise HTTPException(400, "Email already registered.")
+        raise HTTPException(400, f"Guide account creation rejected: An account with '{clean_email}' already exists. Please login instead.")
         
     guide_age = req.age or 25
     if guide_age < 18:
@@ -574,7 +806,7 @@ async def guide_signup(req: GuideSignupReq):
         "guide_id": guide_id,
         "name": req.name,
         "username": req.username.strip().lower() if req.username else req.name.lower().replace(" ", "_"),
-        "email": req.email.lower(),
+        "email": clean_email,
         "password": hash_pw(req.password),
         "phone": req.phone,
         "gender": req.gender or "Female",
@@ -714,31 +946,41 @@ async def create_or_update_guide_profile(req: GuideProfileReq, current=Depends(g
 @api.post("/auth/login")
 async def login(req: LoginReq):
     identifier = req.email.strip().lower()
-    user = await db.users.find_one({
-        "$or": [
-            {"email": identifier},
-            {"username": identifier}
-        ]
-    })
-    if not user or not verify_pw(req.password, user["password"]):
-        raise HTTPException(401, "Invalid email/username or password")
+    
+    if "@" in identifier:
+        clean_email = validate_gmail_email(identifier)
+        user = await db.users.find_one({"email": clean_email})
+        if not user:
+            raise HTTPException(404, f"Account not found: '{clean_email}' is not registered. Please sign up first.")
+    else:
+        user = await db.users.find_one({"username": identifier})
+        if not user:
+            raise HTTPException(404, f"Account not found: Username '{identifier}' is not registered. Please sign up first.")
+
+    if not verify_pw(req.password, user["password"]):
+        raise HTTPException(401, "Invalid password. Please check your password and try again.")
+        
     if user.get("status") == "suspended":
         raise HTTPException(403, "Your account has been suspended by the Admin.")
+        
     token = make_token(user["id"])
     return {"token": token, "user": public_user(user)}
 
 
 @api.get("/auth/me")
 async def me(current=Depends(get_current_user)):
-    return public_user(current)
+    await recalculate_user_trip_stats(current["id"])
+    updated = await db.users.find_one({"id": current["id"]})
+    return public_user(updated or current)
 
 
 @api.patch("/auth/me")
 async def update_me(updates: dict, current=Depends(get_current_user)):
     allowed = {
-        "name", "bio", "interests", "languages", "avatar_url", "phone",
+        "name", "nickname", "bio", "interests", "languages", "avatar_url", "phone",
         "state", "district", "city", "emergency_contact", "availability", "price_per_day", "services"
     }
+
     upd = {k: v for k, v in updates.items() if k in allowed}
     if upd:
         await db.users.update_one({"id": current["id"]}, {"$set": upd})
@@ -945,6 +1187,26 @@ async def export_admin_data(admin=Depends(get_admin_user)):
 
 
 
+async def recalculate_user_trip_stats(user_id: str):
+    """Calculates and updates trips_count and unique countries_visited for a user."""
+    user_trips = await db.trips.find({"user_id": user_id}).to_list(1000)
+    trips_count = len(user_trips)
+    
+    unique_countries = set()
+    for t in user_trips:
+        country_str = (t.get("country") or "").strip()
+        if country_str:
+            unique_countries.add(country_str.title())
+            
+    countries_visited = len(unique_countries)
+    
+    await db.users.update_one(
+        {"id": user_id},
+        {"$set": {"trips_count": trips_count, "countries_visited": countries_visited}}
+    )
+    return trips_count, countries_visited
+
+
 # ------------------------- Routes: Trips -------------------------
 @api.post("/trips")
 async def create_trip(req: TripCreate, current=Depends(get_current_user)):
@@ -952,7 +1214,7 @@ async def create_trip(req: TripCreate, current=Depends(get_current_user)):
     if not trip.get("cover_image"):
         trip["cover_image"] = "https://images.unsplash.com/photo-1499856871958-5b9627545d1a?auto=format&fit=crop&w=800&q=80"
     await db.trips.insert_one(trip)
-    await db.users.update_one({"id": current["id"]}, {"$inc": {"trips_count": 1}})
+    await recalculate_user_trip_stats(current["id"])
     trip.pop("_id", None)
     return trip
 
@@ -976,7 +1238,7 @@ async def delete_trip(trip_id: str, current=Depends(get_current_user)):
     res = await db.trips.delete_one({"id": trip_id, "user_id": current["id"]})
     if res.deleted_count == 0:
         raise HTTPException(404, "Trip not found")
-    await db.users.update_one({"id": current["id"]}, {"$inc": {"trips_count": -1}})
+    await recalculate_user_trip_stats(current["id"])
     return {"ok": True}
 
 
@@ -2289,11 +2551,163 @@ async def seed_data():
         logger.warning("Seed data note: %s", e)
 
 
+class MockCollection:
+    def __init__(self, name: str):
+        self.name = name
+        self.docs = []
+
+    async def create_index(self, *args, **kwargs):
+        pass
+
+    async def find_one(self, filter_dict=None, *args, **kwargs):
+        if not filter_dict:
+            return self.docs[0] if self.docs else None
+        for d in self.docs:
+            match = True
+            for k, v in filter_dict.items():
+                if k == "$or":
+                    or_match = False
+                    for cond in v:
+                        if self._matches(d, cond):
+                            or_match = True
+                            break
+                    if not or_match:
+                        match = False
+                        break
+                elif isinstance(v, dict) and "$in" in v:
+                    if d.get(k) not in v["$in"]:
+                        match = False
+                        break
+                elif d.get(k) != v:
+                    match = False
+                    break
+            if match:
+                return d
+        return None
+
+    def find(self, filter_dict=None, *args, **kwargs):
+        docs = list(self.docs)
+        if filter_dict:
+            docs = [d for d in docs if self._matches(d, filter_dict)]
+
+        class Cursor:
+            def __init__(self, items):
+                self.items = items
+            def sort(self, *args, **kwargs):
+                return self
+            def skip(self, *args, **kwargs):
+                return self
+            def limit(self, *args, **kwargs):
+                return self
+            async def to_list(self, length=None):
+                return self.items[:length] if length else self.items
+            def __aiter__(self):
+                self._iter = iter(self.items)
+                return self
+            async def __anext__(self):
+                try:
+                    return next(self._iter)
+                except StopIteration:
+                    raise StopAsyncIteration
+
+        return Cursor(docs)
+
+    async def insert_one(self, doc):
+        doc_copy = dict(doc)
+        if "_id" not in doc_copy:
+            doc_copy["_id"] = str(uuid.uuid4())
+        self.docs.append(doc_copy)
+        class Result:
+            inserted_id = doc_copy["_id"]
+        return Result()
+
+    async def update_one(self, filter_dict, update_dict, upsert=False):
+        d = await self.find_one(filter_dict)
+        if d:
+            if "$set" in update_dict:
+                d.update(update_dict["$set"])
+            if "$inc" in update_dict:
+                for k, v in update_dict["$inc"].items():
+                    d[k] = d.get(k, 0) + v
+        elif upsert:
+            new_doc = dict(filter_dict)
+            if "$set" in update_dict:
+                new_doc.update(update_dict["$set"])
+            await self.insert_one(new_doc)
+
+    async def delete_many(self, filter_dict=None):
+        if not filter_dict:
+            self.docs = []
+        else:
+            self.docs = [d for d in self.docs if not self._matches(d, filter_dict)]
+
+    async def delete_one(self, filter_dict=None):
+        if not filter_dict:
+            if self.docs:
+                self.docs.pop(0)
+        else:
+            target = await self.find_one(filter_dict)
+            if target:
+                target_id = target.get("id") or target.get("_id")
+                self.docs = [d for d in self.docs if (d.get("id") != target_id and d.get("_id") != target_id)]
+
+
+    def _matches(self, doc, filter_dict):
+        if not filter_dict:
+            return True
+        for k, v in filter_dict.items():
+            if k == "$or":
+                for cond in v:
+                    if self._matches(doc, cond):
+                        return True
+                return False
+            if isinstance(v, dict) and "$in" in v:
+                if doc.get(k) not in v["$in"]:
+                    return False
+            elif isinstance(v, dict) and "$regex" in v:
+                import re
+                opts = v.get("$options", "")
+                flags = re.IGNORECASE if "i" in opts else 0
+                if not re.search(v["$regex"], str(doc.get(k, "")), flags):
+                    return False
+            elif doc.get(k) != v:
+                return False
+        return True
+
+    async def count_documents(self, filter_dict=None):
+        if not filter_dict:
+            return len(self.docs)
+        return len([d for d in self.docs if self._matches(d, filter_dict)])
+
+    async def distinct(self, key, filter_dict=None):
+        docs = [d for d in self.docs if self._matches(d, filter_dict)] if filter_dict else self.docs
+        vals = []
+        for d in docs:
+            v = d.get(key)
+            if v is not None and v not in vals:
+                vals.append(v)
+        return vals
+
+
+
+class MockDatabase:
+    def __init__(self):
+        self.collections = {}
+
+    def __getitem__(self, name: str):
+        if name not in self.collections:
+            self.collections[name] = MockCollection(name)
+        return self.collections[name]
+
+    def __getattr__(self, name: str):
+        return self[name]
+
+
 @app.on_event("startup")
 async def on_startup():
     global client, db
     try:
-        client = AsyncIOMotorClient(MONGO_URL)
+        client = AsyncIOMotorClient(MONGO_URL, serverSelectionTimeoutMS=1500)
         db = client[DB_NAME]
         await asyncio.wait_for(db.users.create_index("email", unique=True), timeout=1.5)
         await db.trips.create_index("user_id")

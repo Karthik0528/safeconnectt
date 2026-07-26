@@ -15,6 +15,7 @@ export default function EditProfile() {
   const { user, updateProfile } = useAuth();
   const { colors } = useTheme();
   const [name, setName] = useState(user?.name || "");
+  const [nickname, setNickname] = useState(user?.nickname || user?.name || "");
   const [bio, setBio] = useState(user?.bio || "");
   const [phone, setPhone] = useState(user?.phone || "");
   const [interests, setInterests] = useState<string[]>(user?.interests || []);
@@ -27,8 +28,9 @@ export default function EditProfile() {
   const save = async () => {
     setBusy(true);
     try {
-      await updateProfile({ name, bio, phone, interests, languages });
+      await updateProfile({ name, nickname, bio, phone, interests, languages });
       router.back();
+
     } catch (e: any) {
       Alert.alert("Error", e.message);
     } finally {
@@ -47,9 +49,13 @@ export default function EditProfile() {
           <View style={{ width: 22 }} />
         </View>
         <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
-          <Field label="Name" colors={colors}>
+          <Field label="Full Name" colors={colors}>
             <TextInput testID="edit-name" value={name} onChangeText={setName} style={[styles.input, { color: colors.text, borderColor: colors.border }]} />
           </Field>
+          <Field label="Nickname / Display Name (Appears under Good Morning)" colors={colors}>
+            <TextInput testID="edit-nickname" value={nickname} onChangeText={setNickname} style={[styles.input, { color: colors.text, borderColor: colors.border }]} />
+          </Field>
+
           <Field label="Phone" colors={colors}>
             <TextInput testID="edit-phone" value={phone} onChangeText={setPhone} keyboardType="phone-pad" style={[styles.input, { color: colors.text, borderColor: colors.border }]} />
           </Field>

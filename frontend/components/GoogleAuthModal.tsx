@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Modal, View, Text, StyleSheet, TouchableOpacity, TextInput, ActivityIndicator } from "react-native";
+import { Modal, View, Text, StyleSheet, TouchableOpacity, TextInput, ActivityIndicator, Platform } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { useTheme } from "../src/theme";
 import { initiateGoogleSignIn, getGoogleClientId, setGoogleClientId } from "../src/googleAuth";
@@ -17,7 +17,7 @@ export function GoogleAuthModal({ visible, onClose, onSelectAccount, roleTitle =
   const [clientIdInput, setClientIdInput] = useState("");
   const [googleEmail, setGoogleEmail] = useState("");
   const [fullName, setFullName] = useState("");
-  const [activeTab, setActiveTab] = useState<"client_id" | "email">("client_id");
+  const [activeTab, setActiveTab] = useState<"client_id" | "email">("email");
   const [err, setErr] = useState("");
 
   useEffect(() => {
@@ -43,10 +43,10 @@ export function GoogleAuthModal({ visible, onClose, onSelectAccount, roleTitle =
       console.warn("Google OAuth note:", error?.message);
       if (error?.message === "CLIENT_ID_REQUIRED") {
         setErr("Please enter a valid Google OAuth Client ID.");
-      } else if (error?.message?.includes("closed")) {
+      } else if (error?.message?.includes("closed") || error?.message?.includes("cancel")) {
         setErr("Google window was closed before signing in.");
       } else {
-        setErr("Google returned an authorization error. Verify that Authorized Redirect URI in Google Cloud Console is set to: http://localhost:8081/auth/google-callback");
+        setErr("Google OAuth error. Please check your credentials or use Direct Google Email tab above.");
       }
     } finally {
       setLoadingReal(false);
@@ -138,7 +138,7 @@ export function GoogleAuthModal({ visible, onClose, onSelectAccount, roleTitle =
                 <View style={[styles.inputRow, { borderColor: colors.border, backgroundColor: colors.background }]}>
                   <Feather name="key" size={16} color={colors.textMuted} />
                   <TextInput
-                    placeholder="e.g. 123456789-xyz.apps.googleusercontent.com"
+                    placeholder="974036452041-unhq8pg51d94th544hgcmeghkjpr43tt.apps.googleusercontent.com"
                     placeholderTextColor={colors.textMuted}
                     value={clientIdInput}
                     onChangeText={setClientIdInput}
@@ -146,6 +146,21 @@ export function GoogleAuthModal({ visible, onClose, onSelectAccount, roleTitle =
                     style={[styles.input, { color: colors.text }]}
                   />
                 </View>
+                <TouchableOpacity
+                  style={{ marginTop: 6, alignSelf: "flex-end" }}
+                  onPress={() => {
+                    if (typeof window !== "undefined" && window.localStorage) {
+                      window.localStorage.removeItem("safeconnect_google_client_id");
+                    }
+                    const newId = "974036452041-unhq8pg51d94th544hgcmeghkjpr43tt.apps.googleusercontent.com";
+                    setClientIdInput(newId);
+                    setGoogleClientId(newId);
+                  }}
+                >
+                  <Text style={{ color: colors.primary, fontSize: 12, fontWeight: "700" }}>
+                    Reset to New Client ID
+                  </Text>
+                </TouchableOpacity>
               </View>
 
               <TouchableOpacity

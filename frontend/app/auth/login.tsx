@@ -6,23 +6,20 @@ import { Feather } from "@expo/vector-icons";
 import { useAuth } from "../../src/auth";
 import { useTheme, radii, spacing } from "../../src/theme";
 import { GradientButton, GlassCard } from "../../src/ui";
-import { GoogleSignInButton } from "../../components/GoogleSignInButton";
-import { GoogleAuthModal } from "../../components/GoogleAuthModal";
 
 export default function Login() {
   const router = useRouter();
-  const { login, googleAuth } = useAuth();
+  const { login } = useAuth();
   const { colors } = useTheme();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  const [showGoogleModal, setShowGoogleModal] = useState(false);
 
   const submit = async () => {
     if (!email || !password) {
-      setErr("Email and password are required.");
+      setErr("Email/Username and password are required.");
       return;
     }
     setBusy(true);
@@ -32,24 +29,6 @@ export default function Login() {
       router.replace("/(tabs)/home");
     } catch (e: any) {
       setErr(e.message || "Login failed");
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const handleGoogleSelect = async (gEmail: string, gName: string, gAvatar: string) => {
-    setBusy(true);
-    setErr(null);
-    try {
-      await googleAuth({
-        email: gEmail,
-        name: gName,
-        avatar_url: gAvatar,
-        role: "user",
-      });
-      router.replace("/(tabs)/home");
-    } catch (e: any) {
-      setErr(e.message || "Google Sign-In failed.");
     } finally {
       setBusy(false);
     }
@@ -108,12 +87,12 @@ export default function Login() {
           ) : null}
 
           <View style={styles.field}>
-            <Text style={[styles.label, { color: colors.text }]}>Email Address</Text>
+            <Text style={[styles.label, { color: colors.text }]}>Email Address or Username</Text>
             <View style={[styles.inputContainer, { borderColor: colors.border, backgroundColor: colors.surface }]}>
               <Feather name="mail" size={18} color={colors.textMuted} />
               <TextInput
                 style={[styles.input, { color: colors.text }]}
-                placeholder="user@safeconnect.in"
+                placeholder="user@safeconnect.in or your_username"
                 placeholderTextColor={colors.textMuted}
                 value={email}
                 onChangeText={setEmail}
@@ -138,15 +117,7 @@ export default function Login() {
             </View>
           </View>
 
-          <GradientButton title="Sign In" onPress={submit} loading={busy} style={{ marginTop: 12 }} />
-
-          <View style={styles.divider}>
-            <View style={[styles.line, { backgroundColor: colors.border }]} />
-            <Text style={[styles.dividerText, { color: colors.textMuted }]}>OR</Text>
-            <View style={[styles.line, { backgroundColor: colors.border }]} />
-          </View>
-
-          <GoogleSignInButton onPress={() => setShowGoogleModal(true)} title="Continue with Google" loading={busy} />
+          <GradientButton title="Sign In" onPress={submit} loading={busy} style={{ marginTop: 16 }} />
 
           <View style={styles.signupRow}>
             <Text style={{ color: colors.textMuted }}>New to saFeConnect? </Text>
@@ -155,13 +126,6 @@ export default function Login() {
             </TouchableOpacity>
           </View>
         </GlassCard>
-
-        <GoogleAuthModal
-          visible={showGoogleModal}
-          onClose={() => setShowGoogleModal(false)}
-          onSelectAccount={handleGoogleSelect}
-          roleTitle="saFeConnect"
-        />
       </ScrollView>
     </SafeAreaView>
   );
@@ -182,8 +146,5 @@ const styles = StyleSheet.create({
   label: { fontSize: 13, fontWeight: "700", marginBottom: 6 },
   inputContainer: { flexDirection: "row", alignItems: "center", borderWidth: 1, borderRadius: radii.md, paddingHorizontal: 14, height: 46, gap: 10 },
   input: { flex: 1, fontSize: 15 },
-  divider: { flexDirection: "row", alignItems: "center", marginVertical: 16 },
-  line: { flex: 1, height: 1 },
-  dividerText: { marginHorizontal: 12, fontSize: 12, fontWeight: "700" },
-  signupRow: { flexDirection: "row", justifyContent: "center", marginTop: 16 },
+  signupRow: { flexDirection: "row", justifyContent: "center", marginTop: 20 },
 });

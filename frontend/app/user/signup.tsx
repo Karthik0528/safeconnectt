@@ -3,31 +3,25 @@ import { View, Text, TextInput, StyleSheet, TouchableOpacity, ScrollView, Alert 
 import { useRouter } from "expo-router";
 import { useAuth } from "../../src/auth";
 import { useTheme, radii, spacing } from "../../src/theme";
-import { GradientButton, GlassCard, GhostButton } from "../../src/ui";
-import { INDIAN_STATES, getCitiesForState } from "../../src/locations";
+import { GradientButton, GlassCard } from "../../src/ui";
+import { api } from "../../src/api";
 import { Feather } from "@expo/vector-icons";
 
 export default function UserSignupScreen() {
   const router = useRouter();
-  const { sendOtp, verifyOtp, userSignup } = useAuth();
+  const { userSignup } = useAuth();
   const { colors } = useTheme();
 
-  // Step 1: OTP Email Verification, Step 2: Details
-  const [step, setStep] = useState<"otp" | "details">("otp");
-  const [email, setEmail] = useState("");
-  const [otpInput, setOtpInput] = useState("");
-  const [generatedOtp, setGeneratedOtp] = useState("");
-  const [otpSent, setOtpSent] = useState(false);
-  const [emailVerified, setEmailVerified] = useState(false);
-
   // User details
+  const [email, setEmail] = useState("");
   const [name, setName] = useState("");
+  const [nickname, setNickname] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [phone, setPhone] = useState("");
   const [gender, setGender] = useState("Female");
   const [dob, setDob] = useState("");
-  const [age, setAge] = useState("24");
+  const [age, setAge] = useState("");
   const [state, setState] = useState("");
   const [district, setDistrict] = useState("");
   const [city, setCity] = useState("");
@@ -39,7 +33,7 @@ export default function UserSignupScreen() {
   const [emRelation, setEmRelation] = useState("Mother");
 
   // Identification docs
-  const [governmentId, setGovernmentId] = useState("AADHAAR-8902-1234");
+  const [governmentId, setGovernmentId] = useState("");
   const [selfie, setSelfie] = useState("https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80");
   const [avatarUrl, setAvatarUrl] = useState("https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80");
 
@@ -60,43 +54,13 @@ export default function UserSignupScreen() {
     }
   };
 
-  const handleSendOtp = async () => {
-    if (!email || !email.includes("@")) {
-      setError("Please enter a valid email address.");
-      return;
-    }
-    setError("");
-    setLoading(true);
-    try {
-      const code = await sendOtp(email);
-      setGeneratedOtp(code);
-      setOtpSent(true);
-    } catch (e: any) {
-      setError(e.message || "Failed to send OTP code.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleVerifyOtp = async () => {
-    if (!otpInput) {
-      setError("Please enter the 6-digit OTP code.");
-      return;
-    }
-    setError("");
-    setLoading(true);
-    try {
-      await verifyOtp(email, otpInput);
-      setEmailVerified(true);
-      setStep("details");
-    } catch (e: any) {
-      setError(e.message || "Invalid OTP code");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleCompleteSignup = async () => {
+    const cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail || !cleanEmail.endsWith("@gmail.com")) {
+      setError("Registration rejected: Only official @gmail.com email addresses are allowed.");
+      return;
+    }
+
     if (!name || !username || !password || !phone || !dob || !age || !state || !city || !emName || !emPhone) {
       setError("Please fill in all required registration fields.");
       return;
@@ -113,8 +77,9 @@ export default function UserSignupScreen() {
     try {
       await userSignup({
         name,
+        nickname: nickname.trim() || name.split(" ")[0],
         username: username.trim(),
-        email,
+        email: cleanEmail,
         password,
         phone,
         gender,
@@ -127,7 +92,7 @@ export default function UserSignupScreen() {
         avatar_url: avatarUrl,
         government_id: governmentId,
         selfie: selfie,
-        bio: "Solo traveller on saFeConnect India",
+        bio: "Solo female traveller on saFeConnect India",
         interests: ["Heritage", "Solo Travel", "Safety"],
         languages: ["English", "Hindi"],
       });
@@ -139,14 +104,12 @@ export default function UserSignupScreen() {
     }
   };
 
-  const cityOptions = getCitiesForState(state);
-
   return (
     <ScrollView style={[styles.container, { backgroundColor: colors.background }]} contentContainerStyle={styles.content}>
       <View style={styles.header}>
         <Text style={[styles.title, { color: colors.text }]}>User Registration</Text>
         <Text style={[styles.subtitle, { color: colors.textMuted }]}>
-          Step {step === "otp" ? "1: Email Verification" : "2: Personal & Identity Details"}
+          Create your account with your official @gmail.com address
         </Text>
       </View>
 
@@ -158,79 +121,42 @@ export default function UserSignupScreen() {
           </View>
         ) : null}
 
-        {step === "otp" ? (
-          <View>
-            <View style={styles.field}>
-              <Text style={[styles.label, { color: colors.text }]}>Email Address</Text>
-              <View style={[styles.inputContainer, { borderColor: colors.border, backgroundColor: colors.surface }]}>
-                <Feather name="mail" size={18} color={colors.textMuted} />
-                <TextInput
-                  style={[styles.input, { color: colors.text }]}
-                  placeholder="name@domain.com"
-                  placeholderTextColor={colors.textMuted}
-                  value={email}
-                  onChangeText={setEmail}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  editable={!otpSent}
-                />
-              </View>
+        <View>
+          <View style={styles.field}>
+            <Text style={[styles.label, { color: colors.text }]}>Gmail Address (@gmail.com only) *</Text>
+            <View style={[styles.inputContainer, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+              <Feather name="mail" size={18} color={colors.textMuted} />
+              <TextInput
+                style={[styles.input, { color: colors.text }]}
+                placeholder="your_name@gmail.com"
+                placeholderTextColor={colors.textMuted}
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
             </View>
-
-            {!otpSent ? (
-              <GradientButton title="Send Verification OTP" onPress={handleSendOtp} loading={loading} />
-            ) : (
-              <View style={{ marginTop: 10 }}>
-                {generatedOtp ? (
-                  <View style={[styles.otpNotice, { backgroundColor: colors.primary + "22", borderColor: colors.primary }]}>
-                    <Feather name="info" size={16} color={colors.primary} />
-                    <Text style={{ color: colors.text, fontWeight: "600", fontSize: 13 }}>
-                      Demo Code: <Text style={{ fontWeight: "900", color: colors.primary }}>{generatedOtp}</Text>
-                    </Text>
-                  </View>
-                ) : null}
-
-                <View style={styles.field}>
-                  <Text style={[styles.label, { color: colors.text }]}>Enter 6-Digit OTP</Text>
-                  <View style={[styles.inputContainer, { borderColor: colors.border, backgroundColor: colors.surface }]}>
-                    <Feather name="key" size={18} color={colors.textMuted} />
-                    <TextInput
-                      style={[styles.input, { color: colors.text }]}
-                      placeholder="123456"
-                      placeholderTextColor={colors.textMuted}
-                      value={otpInput}
-                      onChangeText={setOtpInput}
-                      keyboardType="number-pad"
-                      maxLength={6}
-                    />
-                  </View>
-                </View>
-
-                <GradientButton title="Verify OTP & Continue" onPress={handleVerifyOtp} loading={loading} />
-                <TouchableOpacity onPress={() => setOtpSent(false)} style={{ marginTop: 12, alignItems: "center" }}>
-                  <Text style={{ color: colors.textMuted, fontSize: 13 }}>Change email address</Text>
-                </TouchableOpacity>
-              </View>
-            )}
           </View>
-        ) : (
-          <View>
-            {/* Step 2: Full User Registration Form */}
-            <View style={styles.verifiedHeader}>
-              <Feather name="check-circle" size={16} color={colors.success} />
-              <Text style={{ color: colors.success, fontWeight: "700", fontSize: 13 }}>
-                Email Verified: {email}
-              </Text>
-            </View>
 
             <View style={styles.field}>
               <Text style={[styles.label, { color: colors.text }]}>Full Name *</Text>
               <TextInput
                 style={[styles.singleInput, { borderColor: colors.border, backgroundColor: colors.surface, color: colors.text }]}
-                placeholder="Priya Ananth"
+                placeholder="Enter your full name"
                 placeholderTextColor={colors.textMuted}
                 value={name}
                 onChangeText={setName}
+              />
+            </View>
+
+            <View style={styles.field}>
+              <Text style={[styles.label, { color: colors.text }]}>Nickname / Display Name *</Text>
+              <TextInput
+                style={[styles.singleInput, { borderColor: colors.border, backgroundColor: colors.surface, color: colors.text }]}
+                placeholder="Enter your display name / nickname"
+                placeholderTextColor={colors.textMuted}
+                value={nickname}
+                onChangeText={setNickname}
               />
             </View>
 
@@ -301,6 +227,7 @@ export default function UserSignupScreen() {
                 />
               </View>
             </View>
+
             <View style={styles.field}>
               <Text style={[styles.label, { color: colors.text }]}>Date of Birth (DD/MM/YYYY) *</Text>
               <TextInput
@@ -411,7 +338,6 @@ export default function UserSignupScreen() {
 
             <GradientButton title="Submit User Registration" onPress={handleCompleteSignup} loading={loading} style={{ marginTop: 14 }} />
           </View>
-        )}
 
         <View style={styles.footerRow}>
           <Text style={{ color: colors.textMuted }}>Already registered? </Text>
@@ -506,18 +432,11 @@ const styles = StyleSheet.create({
   otpNotice: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: 10,
     padding: 12,
     borderRadius: radii.md,
     borderWidth: 1,
-    marginBottom: 12,
-  },
-  chip: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: radii.full,
-    borderWidth: 1,
-    marginRight: 8,
+    marginBottom: 14,
   },
   sectionDivider: {
     borderTopWidth: 1,

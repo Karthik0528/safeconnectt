@@ -91,3 +91,11 @@ credentials.json
 *.pem
 *.key
 .credentials
+
+# APKs and build output
+*.apk
+frontend/android/
+frontend/build/
+frontend/builds/
+scratch/
+

@@ -16,6 +16,7 @@ import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useTheme } from "../../src/theme";
 import { api } from "../../src/api";
+import { useAuth } from "../../src/auth";
 import { Chip, GradientButton } from "../../src/ui";
 
 const INTERESTS = ["Food", "Hiking", "Beach", "Culture", "Nightlife", "Photography", "Art", "Wellness"];
@@ -28,6 +29,7 @@ const COVERS = [
 
 export default function CreateTrip() {
   const { colors } = useTheme();
+  const { refresh } = useAuth();
   const router = useRouter();
   const [destination, setDestination] = useState("");
   const [country, setCountry] = useState("");
@@ -62,6 +64,7 @@ export default function CreateTrip() {
           cover_image: cover,
         },
       });
+      await refresh();
       router.replace({ pathname: "/trip/[id]", params: { id: t.id } });
     } catch (e: any) {
       Alert.alert("Error", e.message);
@@ -133,59 +136,46 @@ export default function CreateTrip() {
             </View>
 
             <Text style={[styles.label, { color: colors.textMuted }]}>Budget</Text>
-            <View style={{ flexDirection: "row", marginBottom: 8 }}>
+            <View style={{ flexDirection: "row", gap: 8, marginBottom: 16 }}>
               {["budget", "moderate", "luxury"].map((b) => (
-                <Chip key={b} label={b.charAt(0).toUpperCase() + b.slice(1)} active={budget === b} onPress={() => setBudget(b)} testID={`budget-${b}`} />
-              ))}
-            </View>
-
-            <Text style={[styles.label, { color: colors.textMuted, marginTop: 12 }]}>Interests</Text>
-            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-              {INTERESTS.map((i) => (
-                <Chip key={i} label={i} active={interests.includes(i)} onPress={() => toggle(i)} testID={`interest-${i}`} />
-              ))}
-            </View>
-
-            <Text style={[styles.label, { color: colors.textMuted, marginTop: 16 }]}>Cover photo</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
-              {COVERS.map((u) => (
                 <TouchableOpacity
-                  key={u}
-                  onPress={() => setCover(u)}
-                  testID={`cover-${u.slice(-10)}`}
-                  style={{
-                    marginRight: 10,
-                    borderRadius: 16,
-                    padding: 3,
-                    borderWidth: 2,
-                    borderColor: cover === u ? colors.primary : "transparent",
-                  }}
+                  key={b}
+                  onPress={() => setBudget(b)}
+                  style={[
+                    styles.budgetBtn,
+                    {
+                      borderColor: budget === b ? colors.primary : colors.border,
+                      backgroundColor: budget === b ? colors.chipBg : colors.surface,
+                    },
+                  ]}
                 >
-                  {/* eslint-disable-next-line @typescript-eslint/no-require-imports */}
-                  {require("react-native").Image && (
-                    <View style={{ overflow: "hidden", borderRadius: 12 }}>
-                      <View>
-                        <ImageWrap uri={u} />
-                      </View>
-                    </View>
-                  )}
+                  <Text style={{ color: budget === b ? colors.primary : colors.text, fontWeight: "600" }}>
+                    {b.charAt(0).toUpperCase() + b.slice(1)}
+                  </Text>
                 </TouchableOpacity>
               ))}
-            </ScrollView>
+            </View>
 
-            <Field label="Notes" colors={colors}>
+            <Text style={[styles.label, { color: colors.textMuted }]}>Interests for this trip</Text>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
+              {INTERESTS.map((i) => (
+                <Chip key={i} label={i} selected={interests.includes(i)} onPress={() => toggle(i)} />
+              ))}
+            </View>
+
+            <Field label="Notes & ideas" colors={colors}>
               <TextInput
-                testID="trip-notes"
-                placeholder="Anything we should know (places to visit, friends joining…)"
+                placeholder="What are you excited about?"
                 placeholderTextColor={colors.textMuted}
-                style={[styles.input, styles.textarea, { color: colors.text, borderColor: colors.border }]}
+                multiline
+                numberOfLines={3}
+                style={[styles.input, { color: colors.text, borderColor: colors.border, height: 80 }]}
                 value={notes}
                 onChangeText={setNotes}
-                multiline
               />
             </Field>
 
-            <GradientButton title="Create trip" icon="check" testID="trip-submit" onPress={submit} loading={busy} style={{ marginTop: 12 }} />
+            <GradientButton title="Save trip" onPress={submit} loading={busy} style={{ marginTop: 12 }} testID="trip-submit" />
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -193,14 +183,9 @@ export default function CreateTrip() {
   );
 }
 
-function ImageWrap({ uri }: { uri: string }) {
-  const { Image } = require("react-native");
-  return <Image source={{ uri }} style={{ width: 100, height: 64 }} />;
-}
-
-function Field({ label, children, colors }: any) {
+function Field({ label, children, colors }: { label: string; children: React.ReactNode; colors: any }) {
   return (
-    <View style={{ marginBottom: 12 }}>
+    <View style={{ marginBottom: 16 }}>
       <Text style={[styles.label, { color: colors.textMuted }]}>{label}</Text>
       {children}
     </View>
@@ -208,10 +193,10 @@ function Field({ label, children, colors }: any) {
 }
 
 const styles = StyleSheet.create({
-  hero: { padding: 20, paddingTop: 30, paddingBottom: 42, borderBottomLeftRadius: 34, borderBottomRightRadius: 34 },
-  back: { width: 48, height: 48, borderRadius: 16, backgroundColor: "rgba(255,255,255,0.88)", alignItems: "center", justifyContent: "center", marginBottom: 28 },
-  title: { fontSize: 34, fontWeight: "900" },
-  label: { fontSize: 14, fontWeight: "900", textTransform: "uppercase", letterSpacing: 2.5, marginBottom: 8 },
-  input: { borderWidth: 1, borderRadius: 18, paddingHorizontal: 16, paddingVertical: 16, fontSize: 18 },
-  textarea: { minHeight: 110, textAlignVertical: "top" },
+  hero: { padding: 24, paddingTop: 32 },
+  back: { marginBottom: 12 },
+  title: { fontSize: 28, fontWeight: "800" },
+  label: { fontSize: 13, fontWeight: "700", marginBottom: 6 },
+  input: { borderWidth: 1, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, fontSize: 15 },
+  budgetBtn: { flex: 1, paddingVertical: 10, borderRadius: 12, borderWidth: 1, alignItems: "center" },
 });
